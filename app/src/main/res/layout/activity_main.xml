@@ -110,66 +110,6 @@
             android:layout_marginTop="16dp"
             android:text="@string/start_game" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginVertical="16dp"
-            android:background="#DDDDDD" />
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/status_not_started"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/ruleText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/rule_placeholder" />
-
-        <TextView
-            android:id="@+id/stimulusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:gravity="center"
-            android:text="-"
-            android:textSize="34sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/countdownText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="@string/countdown_placeholder" />
-
-        <Button
-            android:id="@+id/reactButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:enabled="false"
-            android:text="@string/react_button" />
-
-        <Button
-            android:id="@+id/restartButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/restart_game"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/statsText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            tools:text="Puntaje: 0" />
-
     </LinearLayout>
+
 </ScrollView>
