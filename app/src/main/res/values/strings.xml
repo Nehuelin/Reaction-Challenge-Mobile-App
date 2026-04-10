@@ -1,3 +1,18 @@
 <resources>
-    <string name="app_name">ReactionChallenge</string>
+    <string name="game_title">Desafío de Reacción y Atención</string>
+    <string name="player_name_hint">Nombre del jugador</string>
+    <string name="difficulty_label">Dificultad</string>
+    <string name="difficulty_training">Entrenamiento (sin puntos)</string>
+    <string name="difficulty_easy">Fácil</string>
+    <string name="difficulty_medium">Medio</string>
+    <string name="difficulty_hard">Difícil</string>
+    <string name="iterations_label_default">Iteraciones por nivel: 20</string>
+    <string name="time_limit_label_default">Tiempo máximo de reacción: 20 s</string>
+    <string name="inverse_mode_label">Activar modo reacción inversa</string>
+    <string name="start_game">Iniciar partida</string>
+    <string name="restart_game">Reiniciar partida</string>
+    <string name="status_not_started">Partida no iniciada</string>
+    <string name="rule_placeholder">Aquí aparecerá la regla del nivel.</string>
+    <string name="countdown_placeholder">Tiempo restante: -</string>
+    <string name="react_button">¡Reaccionar!</string>
 </resources>
