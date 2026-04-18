@@ -3,6 +3,7 @@ package com.example.reactionchallenge.game;
 import android.graphics.Color;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -11,6 +12,10 @@ import java.util.Random;
 public class GameEngine {
 
     public static final int MAX_LEVELS = 3;
+
+    private static final List<String> FIXED_COLOR_OPTIONS = Arrays.asList("ROJO", "AZUL", "VERDE", "AMARILLO");
+    private static final List<String> FIXED_WORD_OPTIONS = Arrays.asList("CORTA", "MEDIA", "LARGA", "MUY LARGA");
+    private static final List<String> FIXED_NUMBER_OPTIONS = Arrays.asList("PRIMO", "COMPUESTO", "PAR", "IMPAR");
 
     public static class RoundOutcome {
         public final boolean correct;
@@ -23,6 +28,26 @@ public class GameEngine {
             this.levelUp = levelUp;
             this.gameOver = gameOver;
             this.won = won;
+        }
+    }
+
+    private static class ColorStimulus {
+        final String label;
+        final int color;
+
+        ColorStimulus(String label, int color) {
+            this.label = label;
+            this.color = color;
+        }
+    }
+
+    private static class WordStimulus {
+        final String word;
+        final String bucket;
+
+        WordStimulus(String word, String bucket) {
+            this.word = word;
+            this.bucket = bucket;
         }
     }
 
@@ -124,143 +149,147 @@ public class GameEngine {
     }
 
     private StimulusRound generateColorStimulus() {
-        String[] names;
-        int[] colors;
-        String[] targetColors;
-        if (config.difficulty == Difficulty.HARD) {
-            names = new String[]{"ROJO", "VERDE", "AZUL", "AMARILLO", "MORADO", "NARANJA", "CIAN", "MAGENTA"};
-            colors = new int[]{
-                    Color.RED,
-                    Color.GREEN,
-                    Color.BLUE,
-                    Color.rgb(205, 160, 0),
-                    Color.rgb(128, 0, 128),
-                    Color.rgb(255, 140, 0),
-                    Color.CYAN,
-                    Color.MAGENTA
-            };
-            targetColors = new String[]{"ROJO", "AZUL", "MORADO"};
-        } else if (config.difficulty == Difficulty.MEDIUM) {
-            names = new String[]{"ROJO", "VERDE", "AZUL", "AMARILLO", "NARANJA", "MORADO"};
-            colors = new int[]{
-                    Color.RED,
-                    Color.GREEN,
-                    Color.BLUE,
-                    Color.rgb(205, 160, 0),
-                    Color.rgb(255, 140, 0),
-                    Color.rgb(128, 0, 128)
-            };
-            targetColors = new String[]{"ROJO", "AZUL"};
-        } else {
-            names = new String[]{"ROJO", "VERDE", "AZUL", "AMARILLO"};
-            colors = new int[]{Color.RED, Color.GREEN, Color.BLUE, Color.rgb(205, 160, 0)};
-            targetColors = new String[]{"ROJO"};
-        }
+        List<ColorStimulus> palette = buildColorPalette();
+        ColorStimulus selected = palette.get(random.nextInt(palette.size()));
 
-        int pick = random.nextInt(names.length);
+        String[] targetColors = config.difficulty == Difficulty.HARD
+                ? new String[]{"ROJO", "AZUL", "MORADO", "CIAN"}
+                : config.difficulty == Difficulty.MEDIUM
+                ? new String[]{"ROJO", "AZUL"}
+                : new String[]{"ROJO"};
 
-        String selected = names[pick];
-        int selectedColor = colors[pick];
-
-        boolean isTargetColor = contains(selected, targetColors);
+        boolean isTargetColor = contains(selected.label, targetColors);
         boolean shouldReact = !isTargetColor;
-
         String colorList = String.join(", ", targetColors);
 
         String rule = config.inverseMode
                 ? "Modo inverso: reacciona SOLO ante " + colorList
-                : "Selecciona el nombre correcto del color mostrado";
+                : "Selecciona el nombre del color principal mostrado";
         if (config.inverseMode) {
-            shouldReact = !shouldReact;
-            return new StimulusRound("Color " + selected, selectedColor, shouldReact, rule);
+            return new StimulusRound("Color " + selected.label, selected.color, isTargetColor, rule);
         }
 
-        List<String> options = pickOptions(names, selected, Math.min(4, names.length));
-        return new StimulusRound("COLOR", selectedColor, true, rule, options, selected);
+        List<String> options = config.difficulty == Difficulty.HARD
+                ? pickShuffledOptions(extractColorNames(palette), selected.label, 4)
+                : new ArrayList<>(FIXED_COLOR_OPTIONS);
+
+        return new StimulusRound("COLOR", selected.color, true, rule, options, selected.label);
+    }
+
+    private List<ColorStimulus> buildColorPalette() {
+        List<ColorStimulus> palette = new ArrayList<>();
+        palette.add(new ColorStimulus("ROJO", Color.rgb(220, 45, 45)));
+        palette.add(new ColorStimulus("AZUL", Color.rgb(52, 116, 255)));
+        palette.add(new ColorStimulus("VERDE", Color.rgb(40, 170, 90)));
+        palette.add(new ColorStimulus("AMARILLO", Color.rgb(220, 185, 20)));
+
+        if (config.difficulty == Difficulty.MEDIUM || config.difficulty == Difficulty.HARD) {
+            palette.add(new ColorStimulus("ROJO", Color.rgb(180, 30, 30)));
+            palette.add(new ColorStimulus("AZUL", Color.rgb(24, 75, 180)));
+            palette.add(new ColorStimulus("VERDE", Color.rgb(0, 120, 80)));
+            palette.add(new ColorStimulus("AMARILLO", Color.rgb(240, 210, 80)));
+        }
+
+        if (config.difficulty == Difficulty.HARD) {
+            palette.add(new ColorStimulus("MORADO", Color.rgb(130, 65, 180)));
+            palette.add(new ColorStimulus("NARANJA", Color.rgb(240, 120, 20)));
+            palette.add(new ColorStimulus("CIAN", Color.rgb(35, 170, 185)));
+            palette.add(new ColorStimulus("MAGENTA", Color.rgb(220, 40, 155)));
+        }
+
+        return palette;
+    }
+
+    private List<String> extractColorNames(List<ColorStimulus> palette) {
+        List<String> names = new ArrayList<>();
+        for (ColorStimulus stimulus : palette) {
+            if (!names.contains(stimulus.label)) {
+                names.add(stimulus.label);
+            }
+        }
+        return names;
     }
 
     private StimulusRound generateWordStimulus() {
-        String[] words;
-        int maxLength;
-        if (config.difficulty == Difficulty.HARD) {
-            words = new String[]{"SOL", "GATO", "MONTAÑA", "PLANETA", "ALGORITMO", "DESARROLLO", "NUBE", "RAYO"};
-            maxLength = 6;
-        } else if (config.difficulty == Difficulty.MEDIUM) {
-            words = new String[]{"CASA", "SOL", "LUNA", "PERRO", "GATO", "LLUVIA", "ARBOL", "MONTE"};
-            maxLength = 5;
-        } else {
-            words = new String[]{"CASA", "SOL", "LUNA", "PERRO", "GATO"};
-            maxLength = 4;
-        }
+        List<WordStimulus> words = buildWordPool();
+        WordStimulus selected = words.get(random.nextInt(words.size()));
 
-        String selected = words[random.nextInt(words.length)];
-
-        boolean shouldReact = selected.length() <= maxLength;
-
-        int length = selected.length();
+        boolean shouldReact = !"MUY LARGA".equals(selected.bucket);
 
         String rule = config.inverseMode
-                ? "Modo inverso: NO reacciones ante palabras de " + maxLength + " letras o menos"
-                : "Selecciona cuántas letras tiene la palabra";
+                ? "Modo inverso: reacciona SOLO ante palabras MUY LARGAS"
+                : "Selecciona la categoría de longitud de la palabra";
         if (config.inverseMode) {
-            shouldReact = !shouldReact;
-            return new StimulusRound("Palabra " + selected, Color.DKGRAY, shouldReact, rule);
+            return new StimulusRound(selected.word, Color.DKGRAY, !shouldReact, rule);
         }
 
-        List<String> options = buildLengthOptions(length);
-        return new StimulusRound(selected, Color.DKGRAY, true, rule, options, String.valueOf(length));
+        List<String> options = new ArrayList<>(FIXED_WORD_OPTIONS);
+        if (config.difficulty == Difficulty.HARD) {
+            Collections.shuffle(options, random);
+        }
+
+        return new StimulusRound(selected.word, Color.DKGRAY, true, rule, options, selected.bucket);
+    }
+
+    private List<WordStimulus> buildWordPool() {
+        List<WordStimulus> words = new ArrayList<>();
+        words.add(new WordStimulus("SOL", "CORTA"));
+        words.add(new WordStimulus("MAR", "CORTA"));
+        words.add(new WordStimulus("LAGO", "MEDIA"));
+        words.add(new WordStimulus("FLOR", "MEDIA"));
+        words.add(new WordStimulus("PLANETA", "LARGA"));
+        words.add(new WordStimulus("MONTAÑA", "LARGA"));
+
+        if (config.difficulty == Difficulty.MEDIUM || config.difficulty == Difficulty.HARD) {
+            words.add(new WordStimulus("GALAXIA", "LARGA"));
+            words.add(new WordStimulus("RELÁMPAGO", "MUY LARGA"));
+            words.add(new WordStimulus("ECLIPSE", "LARGA"));
+            words.add(new WordStimulus("HORIZONTE", "MUY LARGA"));
+            words.add(new WordStimulus("NUBE", "MEDIA"));
+        }
+        if (config.difficulty == Difficulty.HARD) {
+            words.add(new WordStimulus("TRANSFORMACIÓN", "MUY LARGA"));
+            words.add(new WordStimulus("DESARROLLADOR", "MUY LARGA"));
+            words.add(new WordStimulus("ALGORITMO", "MUY LARGA"));
+            words.add(new WordStimulus("CÓDIGO", "LARGA"));
+            words.add(new WordStimulus("IA", "CORTA"));
+        }
+        return words;
     }
 
     private StimulusRound generatePrimeNumberStimulus() {
-        int lower;
-        int range;
-        if (config.difficulty == Difficulty.HARD) {
-            lower = 200;
-            range = 300;
-        } else if (config.difficulty == Difficulty.MEDIUM) {
-            lower = 120;
-            range = 180;
-        } else {
-            lower = 100;
-            range = 80;
-        }
+        int lower = config.difficulty == Difficulty.HARD ? 200 : config.difficulty == Difficulty.MEDIUM ? 120 : 90;
+        int range = config.difficulty == Difficulty.HARD ? 320 : config.difficulty == Difficulty.MEDIUM ? 220 : 120;
 
         int value = lower + random.nextInt(range);
         boolean prime = isPrime(value);
-        boolean shouldReact;
-        String rule;
-        if (config.difficulty == Difficulty.HARD) {
-            boolean divisibleByThree = value % 3 == 0;
-            boolean target = prime || divisibleByThree;
-            shouldReact = !target;
-            rule = config.inverseMode
-                    ? "Modo inverso: reacciona SOLO ante primos o múltiplos de 3"
-                    : "Selecciona la clasificación correcta del numero";
-        } else {
-            shouldReact = !prime;
-            rule = config.inverseMode
-                    ? "Modo inverso: NO reacciones ante números NO primos"
-                    : "Selecciona si el numero es primo o compuesto";
-        }
+        String rule = config.inverseMode
+                ? "Modo inverso: NO reacciones ante números primos"
+                : "Selecciona la mejor clasificación para el número";
 
 
         if (config.inverseMode) {
-            shouldReact = !shouldReact;
-            return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), shouldReact, rule);
+            return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), !prime, rule);
         }
 
-        String correct = prime ? "PRIMO" : "COMPUESTO";
-        List<String> options = new ArrayList<>();
-        options.add("PRIMO");
-        options.add("COMPUESTO");
-        options.add("PAR");
-        options.add("IMPAR");
-        Collections.shuffle(options, random);
+        String correct;
+        if (prime) {
+            correct = "PRIMO";
+        } else if (value % 2 == 0) {
+            correct = "PAR";
+        } else {
+            correct = "COMPUESTO";
+        }
+
+        List<String> options = new ArrayList<>(FIXED_NUMBER_OPTIONS);
+        if (config.difficulty == Difficulty.HARD) {
+            Collections.shuffle(options, random);
+        }
 
         return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), true, rule, options, correct);
     }
 
-    private List<String> pickOptions(String[] allOptions, String correct, int desiredCount) {
+    private List<String> pickShuffledOptions(List<String> allOptions, String correct, int desiredCount) {
         List<String> pool = new ArrayList<>();
         for (String option : allOptions) {
             if (!option.equals(correct)) {
@@ -276,34 +305,6 @@ public class GameEngine {
         }
         Collections.shuffle(result, random);
         return result;
-    }
-
-    private List<String> buildLengthOptions(int correctLength) {
-        List<String> options = new ArrayList<>();
-        options.add(String.valueOf(correctLength));
-
-        int[] deltas = new int[]{-2, -1, 1, 2, 3};
-        for (int delta : deltas) {
-            int candidate = Math.max(2, correctLength + delta);
-            String asText = String.valueOf(candidate);
-            if (!options.contains(asText)) {
-                options.add(asText);
-            }
-            if (options.size() >= 4) {
-                break;
-            }
-        }
-
-        while (options.size() < 4) {
-            int filler = Math.max(2, correctLength + options.size() + 1);
-            String asText = String.valueOf(filler);
-            if (!options.contains(asText)) {
-                options.add(asText);
-            }
-        }
-
-        Collections.shuffle(options, random);
-        return options;
     }
 
     private boolean contains(String value, String[] candidates) {
