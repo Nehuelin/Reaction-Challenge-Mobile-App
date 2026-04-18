@@ -74,6 +74,42 @@
             android:textSize="28sp"
             android:textStyle="bold" />
 
+        <LinearLayout
+            android:id="@+id/answerOptionsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/optionButton1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                tools:text="OPCIÓN 1" />
+
+            <Button
+                android:id="@+id/optionButton2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                tools:text="OPCIÓN 2" />
+
+            <Button
+                android:id="@+id/optionButton3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                tools:text="OPCIÓN 3" />
+
+            <Button
+                android:id="@+id/optionButton4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                tools:text="OPCIÓN 4" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/restartButton"
             android:layout_width="match_parent"

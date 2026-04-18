@@ -15,4 +15,6 @@
     <string name="rule_placeholder">Aquí aparecerá la regla del nivel.</string>
     <string name="countdown_placeholder">Tiempo restante: -</string>
     <string name="react_button">¡Reaccionar!</string>
+    <string name="option_react">REACCIONAR</string>
+    <string name="option_do_not_react">NO REACCIONAR</string>
 </resources>

@@ -5,7 +5,9 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,6 +19,8 @@ import com.example.reactionchallenge.game.GameConfig;
 import com.example.reactionchallenge.game.GameEngine;
 import com.example.reactionchallenge.game.StimulusRound;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class GameActivity extends AppCompatActivity {
@@ -33,6 +37,8 @@ public class GameActivity extends AppCompatActivity {
     private TextView countdownText;
     private TextView statsText;
     private Button reactButton;
+    private LinearLayout answerOptionsContainer;
+    private final List<Button> optionButtons = new ArrayList<>();
     private Button restartButton;
 
     private final GameEngine gameEngine = new GameEngine();
@@ -85,6 +91,11 @@ public class GameActivity extends AppCompatActivity {
         statsText = findViewById(R.id.statsText);
         reactButton = findViewById(R.id.reactButton);
         restartButton = findViewById(R.id.restartButton);
+        answerOptionsContainer = findViewById(R.id.answerOptionsContainer);
+        optionButtons.add(findViewById(R.id.optionButton1));
+        optionButtons.add(findViewById(R.id.optionButton2));
+        optionButtons.add(findViewById(R.id.optionButton3));
+        optionButtons.add(findViewById(R.id.optionButton4));
     }
 
     private void setupActions() {
@@ -94,14 +105,28 @@ public class GameActivity extends AppCompatActivity {
             }
             responseRegistered = true;
             long reactionTime = System.currentTimeMillis() - roundStartMs;
-            resolveRound(true, reactionTime);
+            resolveReactionRound(true, reactionTime);
         });
+
+        for (Button optionButton : optionButtons) {
+            optionButton.setOnClickListener(v -> onAnswerSelected(optionButton.getText().toString()));
+        }
 
         restartButton.setOnClickListener(v -> {
             restartButton.setVisibility(android.view.View.GONE);
             reactButton.setEnabled(true);
+            setOptionsEnabled(true);
             startGameFromIntent();
         });
+    }
+
+    private void onAnswerSelected(String selectedOption) {
+        if (!gameEngine.isRunning() || responseRegistered) {
+            return;
+        }
+        responseRegistered = true;
+        long reactionTime = System.currentTimeMillis() - roundStartMs;
+        resolveChoiceRound(selectedOption, reactionTime);
     }
 
     private void startGameFromIntent() {
@@ -121,6 +146,7 @@ public class GameActivity extends AppCompatActivity {
 
         statusText.setText("Partida en curso");
         Toast.makeText(this, "Partida iniciada. ¡Atención!", Toast.LENGTH_SHORT).show();
+        updateInteractionMode();
         showCurrentStimulusAndStats();
         startRoundCountdown();
     }
@@ -143,13 +169,17 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onFinish() {
                 if (!responseRegistered) {
-                    resolveRound(false, roundDuration);
+                    if (gameEngine.isInverseMode()) {
+                        resolveReactionRound(false, roundDuration);
+                    } else {
+                        resolveChoiceRound(null, roundDuration);
+                    }
                 }
             }
         }.start();
     }
 
-    private void resolveRound(boolean userReacted, long reactionTimeMs) {
+    private void resolveReactionRound(boolean userReacted, long reactionTimeMs) {
         if (roundTimer != null) {
             roundTimer.cancel();
         }
@@ -172,11 +202,52 @@ public class GameActivity extends AppCompatActivity {
         startRoundCountdown();
     }
 
+    private void resolveChoiceRound(String selectedOption, long reactionTimeMs) {
+        if (roundTimer != null) {
+            roundTimer.cancel();
+        }
+
+        GameEngine.RoundOutcome outcome = gameEngine.resolveChoice(selectedOption, reactionTimeMs);
+        if (outcome.correct) {
+            playFeedbackSound();
+        }
+
+        if (outcome.gameOver) {
+            finishGame(outcome.won);
+            return;
+        }
+
+        if (outcome.levelUp) {
+            Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
+        }
+
+        showCurrentStimulusAndStats();
+        startRoundCountdown();
+    }
+
+    private void updateInteractionMode() {
+        if (gameEngine.isInverseMode()) {
+            reactButton.setVisibility(View.VISIBLE);
+            answerOptionsContainer.setVisibility(View.GONE);
+        } else {
+            reactButton.setVisibility(View.GONE);
+            answerOptionsContainer.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void setOptionsEnabled(boolean enabled) {
+        reactButton.setEnabled(enabled);
+        for (Button optionButton : optionButtons) {
+            optionButton.setEnabled(enabled);
+        }
+    }
+
     private void showCurrentStimulusAndStats() {
         StimulusRound stimulus = gameEngine.getCurrentStimulus();
         stimulusText.setText(stimulus.displayText);
         stimulusText.setTextColor(stimulus.textColor);
         ruleText.setText(stimulus.ruleDescription);
+        updateOptionButtons(stimulus);
         statusText.setText(String.format(Locale.getDefault(), "Nivel %d de %d | Vidas: %d",
                 gameEngine.getLevel(), GameEngine.MAX_LEVELS, gameEngine.getLives()));
 
@@ -189,8 +260,23 @@ public class GameActivity extends AppCompatActivity {
         statsText.setText(gameEngine.buildLiveStats(bestText));
     }
 
+    private void updateOptionButtons(StimulusRound stimulus) {
+        if (gameEngine.isInverseMode()) {
+            return;
+        }
+        for (int i = 0; i < optionButtons.size(); i++) {
+            Button button = optionButtons.get(i);
+            if (i < stimulus.options.size()) {
+                button.setVisibility(View.VISIBLE);
+                button.setText(stimulus.options.get(i));
+            } else {
+                button.setVisibility(View.GONE);
+            }
+        }
+    }
+
     private void finishGame(boolean won) {
-        reactButton.setEnabled(false);
+        setOptionsEnabled(false);
         restartButton.setVisibility(android.view.View.VISIBLE);
 
         String result = won ? "¡Ganaste todos los niveles!" : "Perdiste. Puedes reiniciar.";

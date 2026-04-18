@@ -3,6 +3,7 @@ package com.example.reactionchallenge.game;
 import android.graphics.Color;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -58,13 +59,21 @@ public class GameEngine {
     }
 
     public RoundOutcome resolveRound(boolean reacted, long reactionTimeMs) {
-        totalRounds++;
         boolean correct = currentStimulus.shouldReact == reacted;
+        return evaluateRound(correct, reactionTimeMs, reacted);
+    }
 
+    public RoundOutcome resolveChoice(String selectedOption, long reactionTimeMs) {
+        boolean correct = selectedOption != null && selectedOption.equals(currentStimulus.correctOption);
+        return evaluateRound(correct, reactionTimeMs, selectedOption != null);
+    }
+
+    private RoundOutcome evaluateRound(boolean correct, long reactionTimeMs, boolean hasUserInput) {
+        totalRounds++;
         if (correct) {
             correctAnswers++;
             levelProgress++;
-            if (reacted) {
+            if (hasUserInput) {
                 successfulReactionTimes.add(reactionTimeMs);
             }
 
@@ -151,6 +160,7 @@ public class GameEngine {
         int pick = random.nextInt(names.length);
 
         String selected = names[pick];
+        int selectedColor = colors[pick];
 
         boolean isTargetColor = contains(selected, targetColors);
         boolean shouldReact = !isTargetColor;
@@ -159,11 +169,14 @@ public class GameEngine {
 
         String rule = config.inverseMode
                 ? "Modo inverso: reacciona SOLO ante " + colorList
-                : "Regla: reacciona ante todos los colores excepto " + colorList;
+                : "Selecciona el nombre correcto del color mostrado";
         if (config.inverseMode) {
             shouldReact = !shouldReact;
+            return new StimulusRound("Color " + selected, selectedColor, shouldReact, rule);
         }
-        return new StimulusRound("Color " + selected, colors[pick], shouldReact, rule);
+
+        List<String> options = pickOptions(names, selected, Math.min(4, names.length));
+        return new StimulusRound("COLOR", selectedColor, true, rule, options, selected);
     }
 
     private StimulusRound generateWordStimulus() {
@@ -184,13 +197,18 @@ public class GameEngine {
 
         boolean shouldReact = selected.length() <= maxLength;
 
+        int length = selected.length();
+
         String rule = config.inverseMode
                 ? "Modo inverso: NO reacciones ante palabras de " + maxLength + " letras o menos"
-                : "Regla: reacciona ante palabras de " + maxLength + " letras o menos";
+                : "Selecciona cuántas letras tiene la palabra";
         if (config.inverseMode) {
             shouldReact = !shouldReact;
+            return new StimulusRound("Palabra " + selected, Color.DKGRAY, shouldReact, rule);
         }
-        return new StimulusRound("Palabra " + selected, Color.DKGRAY, shouldReact, rule);
+
+        List<String> options = buildLengthOptions(length);
+        return new StimulusRound(selected, Color.DKGRAY, true, rule, options, String.valueOf(length));
     }
 
     private StimulusRound generatePrimeNumberStimulus() {
@@ -217,19 +235,75 @@ public class GameEngine {
             shouldReact = !target;
             rule = config.inverseMode
                     ? "Modo inverso: reacciona SOLO ante primos o múltiplos de 3"
-                    : "Regla: no reacciones ante primos o múltiplos de 3";
+                    : "Selecciona la clasificación correcta del numero";
         } else {
             shouldReact = !prime;
             rule = config.inverseMode
                     ? "Modo inverso: NO reacciones ante números NO primos"
-                    : "Regla: no reacciones ante números primos";
+                    : "Selecciona si el numero es primo o compuesto";
         }
 
 
         if (config.inverseMode) {
             shouldReact = !shouldReact;
+            return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), shouldReact, rule);
         }
-        return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), shouldReact, rule);
+
+        String correct = prime ? "PRIMO" : "COMPUESTO";
+        List<String> options = new ArrayList<>();
+        options.add("PRIMO");
+        options.add("COMPUESTO");
+        options.add("PAR");
+        options.add("IMPAR");
+        Collections.shuffle(options, random);
+
+        return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), true, rule, options, correct);
+    }
+
+    private List<String> pickOptions(String[] allOptions, String correct, int desiredCount) {
+        List<String> pool = new ArrayList<>();
+        for (String option : allOptions) {
+            if (!option.equals(correct)) {
+                pool.add(option);
+            }
+        }
+        Collections.shuffle(pool, random);
+
+        List<String> result = new ArrayList<>();
+        result.add(correct);
+        for (int i = 0; i < pool.size() && result.size() < desiredCount; i++) {
+            result.add(pool.get(i));
+        }
+        Collections.shuffle(result, random);
+        return result;
+    }
+
+    private List<String> buildLengthOptions(int correctLength) {
+        List<String> options = new ArrayList<>();
+        options.add(String.valueOf(correctLength));
+
+        int[] deltas = new int[]{-2, -1, 1, 2, 3};
+        for (int delta : deltas) {
+            int candidate = Math.max(2, correctLength + delta);
+            String asText = String.valueOf(candidate);
+            if (!options.contains(asText)) {
+                options.add(asText);
+            }
+            if (options.size() >= 4) {
+                break;
+            }
+        }
+
+        while (options.size() < 4) {
+            int filler = Math.max(2, correctLength + options.size() + 1);
+            String asText = String.valueOf(filler);
+            if (!options.contains(asText)) {
+                options.add(asText);
+            }
+        }
+
+        Collections.shuffle(options, random);
+        return options;
     }
 
     private boolean contains(String value, String[] candidates) {
@@ -299,6 +373,10 @@ public class GameEngine {
 
     public Difficulty getDifficulty() {
         return config.difficulty;
+    }
+
+    public boolean isInverseMode() {
+        return config.inverseMode;
     }
 
     public StimulusRound getCurrentStimulus() {
