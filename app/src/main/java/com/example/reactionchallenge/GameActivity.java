@@ -249,6 +249,7 @@ public class GameActivity extends AppCompatActivity {
         if (outcome.levelUp) {
             Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
             startPreRoundCountdown();
+            return;
         }
 
         showCurrentStimulusAndStats();
@@ -273,6 +274,7 @@ public class GameActivity extends AppCompatActivity {
         if (outcome.levelUp) {
             Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
             startPreRoundCountdown();
+            return;
         }
 
         showCurrentStimulusAndStats();
