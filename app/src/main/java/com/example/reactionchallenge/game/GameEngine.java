@@ -115,15 +115,51 @@ public class GameEngine {
     }
 
     private StimulusRound generateColorStimulus() {
-        int pick = random.nextInt(4);
-        String[] names = {"ROJO", "VERDE", "AZUL", "AMARILLO"};
-        int[] colors = {Color.RED, Color.GREEN, Color.BLUE, Color.rgb(205, 160, 0)};
+        String[] names;
+        int[] colors;
+        String[] targetColors;
+        if (config.difficulty == Difficulty.HARD) {
+            names = new String[]{"ROJO", "VERDE", "AZUL", "AMARILLO", "MORADO", "NARANJA", "CIAN", "MAGENTA"};
+            colors = new int[]{
+                    Color.RED,
+                    Color.GREEN,
+                    Color.BLUE,
+                    Color.rgb(205, 160, 0),
+                    Color.rgb(128, 0, 128),
+                    Color.rgb(255, 140, 0),
+                    Color.CYAN,
+                    Color.MAGENTA
+            };
+            targetColors = new String[]{"ROJO", "AZUL", "MORADO"};
+        } else if (config.difficulty == Difficulty.MEDIUM) {
+            names = new String[]{"ROJO", "VERDE", "AZUL", "AMARILLO", "NARANJA", "MORADO"};
+            colors = new int[]{
+                    Color.RED,
+                    Color.GREEN,
+                    Color.BLUE,
+                    Color.rgb(205, 160, 0),
+                    Color.rgb(255, 140, 0),
+                    Color.rgb(128, 0, 128)
+            };
+            targetColors = new String[]{"ROJO", "AZUL"};
+        } else {
+            names = new String[]{"ROJO", "VERDE", "AZUL", "AMARILLO"};
+            colors = new int[]{Color.RED, Color.GREEN, Color.BLUE, Color.rgb(205, 160, 0)};
+            targetColors = new String[]{"ROJO"};
+        }
+
+        int pick = random.nextInt(names.length);
 
         String selected = names[pick];
-        boolean shouldReact = !"ROJO".equals(selected);
+
+        boolean isTargetColor = contains(selected, targetColors);
+        boolean shouldReact = !isTargetColor;
+
+        String colorList = String.join(", ", targetColors);
+
         String rule = config.inverseMode
-                ? "Modo inverso: NO reacciones ante colores excepto ROJO"
-                : "Regla: reacciona ante todos los colores excepto ROJO";
+                ? "Modo inverso: reacciona SOLO ante " + colorList
+                : "Regla: reacciona ante todos los colores excepto " + colorList;
         if (config.inverseMode) {
             shouldReact = !shouldReact;
         }
@@ -131,13 +167,26 @@ public class GameEngine {
     }
 
     private StimulusRound generateWordStimulus() {
-        String[] words = {"CASA", "SOL", "LUNA", "PERRO", "GATO"};
+        String[] words;
+        int maxLength;
+        if (config.difficulty == Difficulty.HARD) {
+            words = new String[]{"SOL", "GATO", "MONTAÑA", "PLANETA", "ALGORITMO", "DESARROLLO", "NUBE", "RAYO"};
+            maxLength = 6;
+        } else if (config.difficulty == Difficulty.MEDIUM) {
+            words = new String[]{"CASA", "SOL", "LUNA", "PERRO", "GATO", "LLUVIA", "ARBOL", "MONTE"};
+            maxLength = 5;
+        } else {
+            words = new String[]{"CASA", "SOL", "LUNA", "PERRO", "GATO"};
+            maxLength = 4;
+        }
+
         String selected = words[random.nextInt(words.length)];
-        boolean shouldReact = selected.length() <= 4;
+
+        boolean shouldReact = selected.length() <= maxLength;
 
         String rule = config.inverseMode
-                ? "Modo inverso: NO reacciones ante palabras cortas (4 letras o menos)"
-                : "Regla: reacciona ante palabras cortas (4 letras o menos)";
+                ? "Modo inverso: NO reacciones ante palabras de " + maxLength + " letras o menos"
+                : "Regla: reacciona ante palabras de " + maxLength + " letras o menos";
         if (config.inverseMode) {
             shouldReact = !shouldReact;
         }
@@ -145,17 +194,51 @@ public class GameEngine {
     }
 
     private StimulusRound generatePrimeNumberStimulus() {
-        int value = 100 + random.nextInt(80);
-        boolean prime = isPrime(value);
-        boolean shouldReact = !prime;
+        int lower;
+        int range;
+        if (config.difficulty == Difficulty.HARD) {
+            lower = 200;
+            range = 300;
+        } else if (config.difficulty == Difficulty.MEDIUM) {
+            lower = 120;
+            range = 180;
+        } else {
+            lower = 100;
+            range = 80;
+        }
 
-        String rule = config.inverseMode
-                ? "Modo inverso: NO reacciones ante números NO primos"
-                : "Regla: no reacciones ante números primos";
+        int value = lower + random.nextInt(range);
+        boolean prime = isPrime(value);
+        boolean shouldReact;
+        String rule;
+        if (config.difficulty == Difficulty.HARD) {
+            boolean divisibleByThree = value % 3 == 0;
+            boolean target = prime || divisibleByThree;
+            shouldReact = !target;
+            rule = config.inverseMode
+                    ? "Modo inverso: reacciona SOLO ante primos o múltiplos de 3"
+                    : "Regla: no reacciones ante primos o múltiplos de 3";
+        } else {
+            shouldReact = !prime;
+            rule = config.inverseMode
+                    ? "Modo inverso: NO reacciones ante números NO primos"
+                    : "Regla: no reacciones ante números primos";
+        }
+
+
         if (config.inverseMode) {
             shouldReact = !shouldReact;
         }
         return new StimulusRound(String.valueOf(value), Color.rgb(80, 50, 130), shouldReact, rule);
+    }
+
+    private boolean contains(String value, String[] candidates) {
+        for (String candidate : candidates) {
+            if (candidate.equals(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isPrime(int number) {
