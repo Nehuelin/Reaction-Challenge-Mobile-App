@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
@@ -13,17 +12,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.reactionchallenge.data.BestScoreRepository;
 import com.example.reactionchallenge.game.Difficulty;
-import com.example.reactionchallenge.game.GameConfig;
-import com.example.reactionchallenge.game.GameEngine;
-import com.example.reactionchallenge.game.StimulusRound;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class GameActivity extends AppCompatActivity {
 
@@ -43,13 +38,10 @@ public class GameActivity extends AppCompatActivity {
     private final List<Button> optionButtons = new ArrayList<>();
     private Button restartButton;
 
-    private final GameEngine gameEngine = new GameEngine();
+    private GameViewModel viewModel;
     private BestScoreRepository bestScoreRepository;
-    private CountDownTimer roundTimer;
-    private CountDownTimer preRoundTimer;
-    private long roundStartMs;
-    private boolean responseRegistered;
     private float defaultRuleTextSizeSp;
+    private boolean finalScoreProcessed;
 
     public static Intent createIntent(
             Context context,
@@ -74,20 +66,12 @@ public class GameActivity extends AppCompatActivity {
         setContentView(R.layout.activity_game);
 
         bestScoreRepository = new BestScoreRepository(this);
+        viewModel = new ViewModelProvider(this).get(GameViewModel.class);
+
         bindViews();
         setupActions();
+        observeState();
         startGameFromIntent();
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (preRoundTimer != null) {
-            preRoundTimer.cancel();
-        }
-        if (roundTimer != null) {
-            roundTimer.cancel();
-        }
-        super.onDestroy();
     }
 
     private void bindViews() {
@@ -107,34 +91,56 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void setupActions() {
-        reactButton.setOnClickListener(v -> {
-            if (!gameEngine.isRunning() || responseRegistered) {
-                return;
-            }
-            responseRegistered = true;
-            long reactionTime = System.currentTimeMillis() - roundStartMs;
-            resolveReactionRound(true, reactionTime);
-        });
+        reactButton.setOnClickListener(v -> viewModel.onReactPressed());
 
         for (Button optionButton : optionButtons) {
-            optionButton.setOnClickListener(v -> onAnswerSelected(optionButton.getText().toString()));
+            optionButton.setOnClickListener(v -> viewModel.onChoiceSelected(optionButton.getText().toString()));
         }
 
         restartButton.setOnClickListener(v -> {
-            restartButton.setVisibility(android.view.View.GONE);
-            reactButton.setEnabled(true);
-            setOptionsEnabled(true);
+            restartButton.setVisibility(View.GONE);
             startGameFromIntent();
         });
     }
 
-    private void onAnswerSelected(String selectedOption) {
-        if (!gameEngine.isRunning() || responseRegistered) {
-            return;
-        }
-        responseRegistered = true;
-        long reactionTime = System.currentTimeMillis() - roundStartMs;
-        resolveChoiceRound(selectedOption, reactionTime);
+    private void observeState() {
+        viewModel.getUiState().observe(this, state -> {
+            if (state == null) {
+                return;
+            }
+
+            statusText.setText(state.statusText);
+            ruleText.setText(state.ruleText);
+            stimulusText.setText(state.stimulusText);
+            stimulusText.setTextColor(state.stimulusColor);
+            countdownText.setText(state.countdownText);
+            restartButton.setVisibility(state.restartVisible ? View.VISIBLE : View.GONE);
+
+            if (state.phase == GameUiState.Phase.PRE_ROUND_COUNTDOWN) {
+                ruleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f);
+                stimulusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34f);
+            } else {
+                ruleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, defaultRuleTextSizeSp);
+                stimulusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46f);
+            }
+
+            reactButton.setVisibility(state.showReactButton ? View.VISIBLE : View.GONE);
+            answerOptionsContainer.setVisibility(state.showReactButton ? View.GONE : View.VISIBLE);
+            reactButton.setEnabled(state.optionsEnabled);
+            for (Button optionButton : optionButtons) {
+                optionButton.setEnabled(state.optionsEnabled);
+            }
+
+            updateOptionButtons(state.options);
+            renderStats(state);
+
+            if (state.playSuccessSound) {
+                playFeedbackSound();
+            }
+            if (state.phase == GameUiState.Phase.LEVEL_UP) {
+                Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void startGameFromIntent() {
@@ -149,222 +155,48 @@ public class GameActivity extends AppCompatActivity {
             difficulty = Difficulty.valueOf(difficultyName);
         }
 
-        GameConfig config = new GameConfig(difficulty, iterations, reactionLimitMs, inverseMode);
-        gameEngine.start(playerName, config);
-
-        statusText.setText("Partida en curso");
+        finalScoreProcessed = false;
+        viewModel.startGame(playerName, difficulty, iterations, reactionLimitMs, inverseMode);
         Toast.makeText(this, "Partida iniciada. ¡Atención!", Toast.LENGTH_SHORT).show();
-        updateInteractionMode();
-        showCurrentStimulusAndStats();
-        startPreRoundCountdown();
     }
 
-    private void startPreRoundCountdown() {
-        if (preRoundTimer != null) {
-            preRoundTimer.cancel();
-        }
-        if (roundTimer != null) {
-            roundTimer.cancel();
-        }
-
-        responseRegistered = true;
-        setOptionsEnabled(false);
-
-        StimulusRound stimulus = gameEngine.getCurrentStimulus();
-        ruleText.setText(stimulus.ruleDescription);
-        ruleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f);
-        stimulusText.setText(stimulus.ruleDescription);
-        stimulusText.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        stimulusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34f);
-
-        preRoundTimer = new CountDownTimer(4_000L, 1_000L) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                long secondsLeft = (millisUntilFinished + 999L) / 1_000L;
-                countdownText.setText(String.format(
-                        Locale.getDefault(),
-                        "Nueva ronda en: %d s",
-                        secondsLeft
-                ));
-            }
-
-            @Override
-            public void onFinish() {
-                restoreRoundView();
-                showCurrentStimulusAndStats();
-                startRoundCountdown();
-            }
-        }.start();
-    }
-
-    private void restoreRoundView() {
-        ruleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, defaultRuleTextSizeSp);
-        stimulusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46f);
-        setOptionsEnabled(true);
-    }
-
-    private void startRoundCountdown() {
-        if (roundTimer != null) {
-            roundTimer.cancel();
-        }
-
-        responseRegistered = false;
-        roundStartMs = System.currentTimeMillis();
-        long roundDuration = gameEngine.getEffectiveReactionMs();
-
-        roundTimer = new CountDownTimer(roundDuration, 100) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                countdownText.setText(String.format(Locale.getDefault(), "Tiempo restante: %.1f s", millisUntilFinished / 1000f));
-            }
-
-            @Override
-            public void onFinish() {
-                if (!responseRegistered) {
-                    if (gameEngine.isInverseMode()) {
-                        resolveReactionRound(false, roundDuration);
-                    } else {
-                        resolveChoiceRound(null, roundDuration);
-                    }
-                }
-            }
-        }.start();
-    }
-
-    private void resolveReactionRound(boolean userReacted, long reactionTimeMs) {
-        if (roundTimer != null) {
-            roundTimer.cancel();
-        }
-
-        GameEngine.RoundOutcome outcome = gameEngine.resolveRound(userReacted, reactionTimeMs);
-        if (outcome.correct && userReacted) {
-            playFeedbackSound();
-        }
-
-        if (outcome.gameOver) {
-            finishGame(outcome.won);
-            return;
-        }
-
-        if (outcome.levelUp) {
-            Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
-            startPreRoundCountdown();
-            return;
-        }
-
-        showCurrentStimulusAndStats();
-        startRoundCountdown();
-    }
-
-    private void resolveChoiceRound(String selectedOption, long reactionTimeMs) {
-        if (roundTimer != null) {
-            roundTimer.cancel();
-        }
-
-        GameEngine.RoundOutcome outcome = gameEngine.resolveChoice(selectedOption, reactionTimeMs);
-        if (outcome.correct) {
-            playFeedbackSound();
-        }
-
-        if (outcome.gameOver) {
-            finishGame(outcome.won);
-            return;
-        }
-
-        if (outcome.levelUp) {
-            Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
-            startPreRoundCountdown();
-            return;
-        }
-
-        showCurrentStimulusAndStats();
-        startRoundCountdown();
-    }
-
-    private void updateInteractionMode() {
-        if (gameEngine.isInverseMode()) {
-            reactButton.setVisibility(View.VISIBLE);
-            answerOptionsContainer.setVisibility(View.GONE);
-        } else {
-            reactButton.setVisibility(View.GONE);
-            answerOptionsContainer.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void setOptionsEnabled(boolean enabled) {
-        reactButton.setEnabled(enabled);
-        for (Button optionButton : optionButtons) {
-            optionButton.setEnabled(enabled);
-        }
-    }
-
-    private void showCurrentStimulusAndStats() {
-        StimulusRound stimulus = gameEngine.getCurrentStimulus();
-        stimulusText.setText(stimulus.displayText);
-        stimulusText.setTextColor(stimulus.textColor);
-        ruleText.setText(stimulus.ruleDescription);
-        updateOptionButtons(stimulus);
-        statusText.setText(String.format(Locale.getDefault(), "Nivel %d de %d | Vidas: %d",
-                gameEngine.getLevel(), GameEngine.MAX_LEVELS, gameEngine.getLives()));
-
+    private void renderStats(GameUiState state) {
         String bestText = bestScoreRepository.buildBestStatsText(
-                gameEngine.getPlayerName(),
-                gameEngine.getScore(),
-                gameEngine.getAverageReactionMs(),
-                false
+                viewModel.getPlayerName(),
+                viewModel.getScore(),
+                viewModel.getAverageReactionMs(),
+                state.phase == GameUiState.Phase.GAME_FINISHED
         );
-        statsText.setText(gameEngine.buildLiveStats(bestText));
+
+
+        if (state.phase == GameUiState.Phase.GAME_FINISHED && viewModel.shouldPersistScore() && !finalScoreProcessed) {
+            bestScoreRepository.saveIfBetter(
+                    viewModel.getPlayerName(),
+                    viewModel.getScore(),
+                    viewModel.getAverageReactionMs()
+            );
+            finalScoreProcessed = true;
+            bestText = bestScoreRepository.buildBestStatsText(
+                    viewModel.getPlayerName(),
+                    viewModel.getScore(),
+                    viewModel.getAverageReactionMs(),
+                    true
+            );
+        }
+
+        statsText.setText(viewModel.appendBestStats(state.statsText, bestText));
     }
 
-    private void updateOptionButtons(StimulusRound stimulus) {
-        if (gameEngine.isInverseMode()) {
-            return;
-        }
+    private void updateOptionButtons(List<String> options) {
         for (int i = 0; i < optionButtons.size(); i++) {
             Button button = optionButtons.get(i);
-            if (i < stimulus.options.size()) {
+            if (i < options.size()) {
                 button.setVisibility(View.VISIBLE);
-                button.setText(stimulus.options.get(i));
+                button.setText(options.get(i));
             } else {
                 button.setVisibility(View.GONE);
             }
         }
-    }
-
-    private void finishGame(boolean won) {
-        setOptionsEnabled(false);
-        restartButton.setVisibility(android.view.View.VISIBLE);
-
-        String result = won ? "¡Ganaste todos los niveles!" : "Perdiste. Puedes reiniciar.";
-        statusText.setText(result);
-
-        if (gameEngine.getDifficulty() != Difficulty.TRAINING) {
-            bestScoreRepository.saveIfBetter(
-                    gameEngine.getPlayerName(),
-                    gameEngine.getScore(),
-                    gameEngine.getAverageReactionMs()
-            );
-        }
-
-        String bestText = bestScoreRepository.buildBestStatsText(
-                gameEngine.getPlayerName(),
-                gameEngine.getScore(),
-                gameEngine.getAverageReactionMs(),
-                true
-        );
-
-        String finalStats = String.format(
-                Locale.getDefault(),
-                "%s\nAciertos: %d/%d\nPuntaje final: %d%s\nTiempo de reacción promedio: %.0f ms\n%s",
-                result,
-                gameEngine.getCorrectAnswers(),
-                gameEngine.getTotalRounds(),
-                gameEngine.getScore(),
-                gameEngine.getDifficulty() == Difficulty.TRAINING ? " (modo entrenamiento)" : "",
-                gameEngine.getAverageReactionMs(),
-                bestText
-        );
-        statsText.setText(finalStats);
     }
 
     private void playFeedbackSound() {
@@ -375,4 +207,5 @@ public class GameActivity extends AppCompatActivity {
         player.setOnCompletionListener(MediaPlayer::release);
         player.start();
     }
+
 }
