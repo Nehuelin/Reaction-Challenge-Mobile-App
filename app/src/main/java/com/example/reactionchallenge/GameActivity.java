@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -12,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.example.reactionchallenge.data.BestScoreRepository;
 import com.example.reactionchallenge.game.Difficulty;
@@ -44,8 +46,10 @@ public class GameActivity extends AppCompatActivity {
     private final GameEngine gameEngine = new GameEngine();
     private BestScoreRepository bestScoreRepository;
     private CountDownTimer roundTimer;
+    private CountDownTimer preRoundTimer;
     private long roundStartMs;
     private boolean responseRegistered;
+    private float defaultRuleTextSizeSp;
 
     public static Intent createIntent(
             Context context,
@@ -77,6 +81,9 @@ public class GameActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (preRoundTimer != null) {
+            preRoundTimer.cancel();
+        }
         if (roundTimer != null) {
             roundTimer.cancel();
         }
@@ -96,6 +103,7 @@ public class GameActivity extends AppCompatActivity {
         optionButtons.add(findViewById(R.id.optionButton2));
         optionButtons.add(findViewById(R.id.optionButton3));
         optionButtons.add(findViewById(R.id.optionButton4));
+        defaultRuleTextSizeSp = ruleText.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
     }
 
     private void setupActions() {
@@ -148,7 +156,51 @@ public class GameActivity extends AppCompatActivity {
         Toast.makeText(this, "Partida iniciada. ¡Atención!", Toast.LENGTH_SHORT).show();
         updateInteractionMode();
         showCurrentStimulusAndStats();
-        startRoundCountdown();
+        startPreRoundCountdown();
+    }
+
+    private void startPreRoundCountdown() {
+        if (preRoundTimer != null) {
+            preRoundTimer.cancel();
+        }
+        if (roundTimer != null) {
+            roundTimer.cancel();
+        }
+
+        responseRegistered = true;
+        setOptionsEnabled(false);
+
+        StimulusRound stimulus = gameEngine.getCurrentStimulus();
+        ruleText.setText(stimulus.ruleDescription);
+        ruleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f);
+        stimulusText.setText(stimulus.ruleDescription);
+        stimulusText.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+        stimulusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34f);
+
+        preRoundTimer = new CountDownTimer(4_000L, 1_000L) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                long secondsLeft = (millisUntilFinished + 999L) / 1_000L;
+                countdownText.setText(String.format(
+                        Locale.getDefault(),
+                        "Nueva ronda en: %d s",
+                        secondsLeft
+                ));
+            }
+
+            @Override
+            public void onFinish() {
+                restoreRoundView();
+                showCurrentStimulusAndStats();
+                startRoundCountdown();
+            }
+        }.start();
+    }
+
+    private void restoreRoundView() {
+        ruleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, defaultRuleTextSizeSp);
+        stimulusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46f);
+        setOptionsEnabled(true);
     }
 
     private void startRoundCountdown() {
@@ -196,6 +248,7 @@ public class GameActivity extends AppCompatActivity {
 
         if (outcome.levelUp) {
             Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
+            startPreRoundCountdown();
         }
 
         showCurrentStimulusAndStats();
@@ -219,6 +272,7 @@ public class GameActivity extends AppCompatActivity {
 
         if (outcome.levelUp) {
             Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
+            startPreRoundCountdown();
         }
 
         showCurrentStimulusAndStats();
