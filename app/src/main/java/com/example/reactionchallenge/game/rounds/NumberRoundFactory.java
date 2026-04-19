@@ -12,15 +12,14 @@ import java.util.Random;
 
 public class NumberRoundFactory implements RoundFactory {
 
-    private static final List<String> FIXED_NUMBER_OPTIONS = Arrays.asList("PRIMO", "COMPUESTO", "PAR", "IMPAR");
+    private static final List<String> ALL_NUMBER_OPTIONS =
+            Arrays.asList("PRIMO", "COMPUESTO", "PAR", "IMPAR");
+
     private static final DomainColor NUMBER_COLOR = new DomainColor(80, 50, 130);
 
     @Override
     public StimulusRound create(Difficulty difficulty, boolean inverseMode, Random random) {
-        int lower = difficulty == Difficulty.HARD ? 200 : difficulty == Difficulty.MEDIUM ? 120 : 90;
-        int range = difficulty == Difficulty.HARD ? 320 : difficulty == Difficulty.MEDIUM ? 220 : 120;
-
-        int value = lower + random.nextInt(range);
+        int value = generateValue(difficulty, random);
         boolean prime = isPrime(value);
 
         if (inverseMode) {
@@ -36,19 +35,8 @@ public class NumberRoundFactory implements RoundFactory {
             );
         }
 
-        String correct;
-        if (prime) {
-            correct = "PRIMO";
-        } else if (value % 2 == 0) {
-            correct = "PAR";
-        } else {
-            correct = "COMPUESTO";
-        }
-
-        List<String> options = new ArrayList<>(FIXED_NUMBER_OPTIONS);
-        if (difficulty == Difficulty.HARD) {
-            Collections.shuffle(options, random);
-        }
+        String correct = classify(value, prime);
+        List<String> options = buildOptions(difficulty, correct, random);
 
         return new StimulusRound(
                 StimulusRound.Category.NUMBER,
@@ -60,6 +48,103 @@ public class NumberRoundFactory implements RoundFactory {
                 options,
                 correct
         );
+    }
+
+    private int generateValue(Difficulty difficulty, Random random) {
+        int lower;
+        int range;
+
+        switch (difficulty) {
+            case EASY:
+                lower = 2;
+                range = 28;   // 2..29
+                break;
+            case MEDIUM:
+                lower = 10;
+                range = 60;   // 10..69
+                break;
+            case HARD:
+            default:
+                lower = 40;
+                range = 110;  // 40..149
+                break;
+        }
+
+        return lower + random.nextInt(range);
+    }
+
+    private String classify(int value, boolean prime) {
+        if (prime) {
+            return "PRIMO";
+        }
+        if (value % 2 == 0) {
+            return "PAR";
+        }
+        return "COMPUESTO";
+    }
+
+    private List<String> buildOptions(Difficulty difficulty, String correct, Random random) {
+        List<String> options = new ArrayList<>();
+        options.add(correct);
+
+        switch (difficulty) {
+            case EASY:
+                options.add(getEasyDistractor(correct));
+                break;
+
+            case MEDIUM:
+                options.addAll(getMediumDistractors(correct, random));
+                Collections.shuffle(options, random);
+                break;
+
+            case HARD:
+            default:
+                for (String option : ALL_NUMBER_OPTIONS) {
+                    if (!option.equals(correct)) {
+                        options.add(option);
+                    }
+                }
+                Collections.shuffle(options, random);
+                break;
+        }
+
+        return options;
+    }
+
+    private String getEasyDistractor(String correct) {
+        switch (correct) {
+            case "PRIMO":
+                return "COMPUESTO";
+            case "PAR":
+                return "COMPUESTO";
+            case "COMPUESTO":
+            default:
+                return "PAR";
+        }
+    }
+
+    private List<String> getMediumDistractors(String correct, Random random) {
+        List<String> distractors = new ArrayList<>();
+
+        switch (correct) {
+            case "PRIMO":
+                distractors.add("COMPUESTO");
+                distractors.add(random.nextBoolean() ? "PAR" : "IMPAR");
+                break;
+
+            case "PAR":
+                distractors.add("COMPUESTO");
+                distractors.add("IMPAR");
+                break;
+
+            case "COMPUESTO":
+            default:
+                distractors.add("PRIMO");
+                distractors.add("PAR");
+                break;
+        }
+
+        return distractors;
     }
 
     private boolean isPrime(int number) {
