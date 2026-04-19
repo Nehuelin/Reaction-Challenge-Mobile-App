@@ -31,8 +31,8 @@ public class GameViewModel extends ViewModel {
         return uiState;
     }
 
-    public void startGame(String playerName, Difficulty difficulty, int iterations, long reactionLimitMs, boolean inverseMode) {
-        GameConfig config = new GameConfig(difficulty, iterations, reactionLimitMs, inverseMode);
+    public void startGame(String playerName, Difficulty difficulty, int iterations, long reactionLimitMs, boolean inverseMode, boolean dynamicDifficultyEnabled) {
+        GameConfig config = new GameConfig(difficulty, iterations, reactionLimitMs, inverseMode, dynamicDifficultyEnabled);
         gameEngine.start(playerName, config);
         emitPreRoundState("Partida en curso", "Nueva ronda en: 4 s", 4);
         startPreRoundCountdown();

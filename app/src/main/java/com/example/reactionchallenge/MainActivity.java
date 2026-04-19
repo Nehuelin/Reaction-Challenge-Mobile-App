@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private SeekBar timeLimitSeekbar;
     private RadioGroup difficultyGroup;
     private CheckBox inverseModeCheckbox;
+    private CheckBox dynamicDifficultyCheckbox;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
@@ -41,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
         iterationsSeekbar = findViewById(R.id.iterationsSeekbar);
         timeLimitSeekbar = findViewById(R.id.timeLimitSeekbar);
         inverseModeCheckbox = findViewById(R.id.inverseModeCheckbox);
+        dynamicDifficultyCheckbox = findViewById(R.id.dynamicDifficultyCheckbox);
         iterationsLabel = findViewById(R.id.iterationsLabel);
         timeLimitLabel = findViewById(R.id.timeLimitLabel);
         Button startButton = findViewById(R.id.startButton);
@@ -116,7 +118,8 @@ public class MainActivity extends AppCompatActivity {
                 getSelectedDifficulty(),
                 iterationsSeekbar.getProgress() + 5,
                 Math.min((timeLimitSeekbar.getProgress() + 5L) * 1000L, 30_000L),
-                inverseModeCheckbox.isChecked()
+                inverseModeCheckbox.isChecked(),
+                dynamicDifficultyCheckbox.isChecked()
         );
 
         startActivity(gameIntent);

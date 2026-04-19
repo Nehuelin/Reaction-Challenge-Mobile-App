@@ -111,6 +111,13 @@
             android:layout_marginTop="12dp"
             android:text="@string/inverse_mode_label" />
 
+        <CheckBox
+            android:id="@+id/dynamicDifficultyCheckbox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/dynamic_difficulty_label" />
+
         <Button
             android:id="@+id/startButton"
             android:layout_width="match_parent"

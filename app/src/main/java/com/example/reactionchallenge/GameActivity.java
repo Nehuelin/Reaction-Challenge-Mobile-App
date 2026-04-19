@@ -30,6 +30,7 @@ public class GameActivity extends AppCompatActivity {
     private static final String EXTRA_ITERATIONS = "extra_iterations";
     private static final String EXTRA_REACTION_LIMIT_MS = "extra_reaction_limit_ms";
     private static final String EXTRA_INVERSE_MODE = "extra_inverse_mode";
+    private static final String EXTRA_DYNAMIC_DIFFICULTY_ENABLED = "extra_dynamic_difficulty_enabled";
 
     private TextView statusText;
     private TextView ruleText;
@@ -57,7 +58,8 @@ public class GameActivity extends AppCompatActivity {
             Difficulty difficulty,
             int iterationsPerLevel,
             long reactionLimitMs,
-            boolean inverseMode
+            boolean inverseMode,
+            boolean dynamicDifficultyEnabled
     ) {
         Intent intent = new Intent(context, GameActivity.class);
         intent.putExtra(EXTRA_PLAYER_NAME, playerName);
@@ -65,6 +67,7 @@ public class GameActivity extends AppCompatActivity {
         intent.putExtra(EXTRA_ITERATIONS, iterationsPerLevel);
         intent.putExtra(EXTRA_REACTION_LIMIT_MS, reactionLimitMs);
         intent.putExtra(EXTRA_INVERSE_MODE, inverseMode);
+        intent.putExtra(EXTRA_DYNAMIC_DIFFICULTY_ENABLED, dynamicDifficultyEnabled);
         return intent;
     }
 
@@ -175,6 +178,7 @@ public class GameActivity extends AppCompatActivity {
         int iterations = getIntent().getIntExtra(EXTRA_ITERATIONS, 20);
         long reactionLimitMs = getIntent().getLongExtra(EXTRA_REACTION_LIMIT_MS, 20_000L);
         boolean inverseMode = getIntent().getBooleanExtra(EXTRA_INVERSE_MODE, false);
+        boolean dynamicDifficultyEnabled = getIntent().getBooleanExtra(EXTRA_DYNAMIC_DIFFICULTY_ENABLED, true);
 
         Difficulty difficulty = Difficulty.EASY;
         if (difficultyName != null) {
@@ -182,7 +186,7 @@ public class GameActivity extends AppCompatActivity {
         }
 
         finalScoreProcessed = false;
-        viewModel.startGame(playerName, difficulty, iterations, reactionLimitMs, inverseMode);
+        viewModel.startGame(playerName, difficulty, iterations, reactionLimitMs, inverseMode, dynamicDifficultyEnabled);
         Toast.makeText(this, "Partida iniciada. ¡Atención!", Toast.LENGTH_SHORT).show();
     }
 

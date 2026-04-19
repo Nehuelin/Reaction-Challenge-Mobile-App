@@ -12,6 +12,7 @@ import java.util.Random;
 public class GameEngine {
 
     public static final int MAX_LEVELS = 3;
+    private static final long MIN_DYNAMIC_REACTION_MS = 5_000L;
 
     public static class RoundOutcome {
         public final boolean correct;
@@ -47,6 +48,7 @@ public class GameEngine {
     private int correctStreak;
     private Difficulty currentDifficulty;
     private boolean running;
+    private int targetRoundsForMinimumReaction;
 
     public void start(String playerName, GameConfig config) {
         this.playerName = playerName;
@@ -62,6 +64,7 @@ public class GameEngine {
         correctStreak = 0;
         currentDifficulty = config.difficulty;
         running = true;
+        targetRoundsForMinimumReaction = calculateBestCaseRoundsToWin();
         successfulReactionTimes.clear();
         currentStimulus = generateStimulus();
     }
@@ -91,15 +94,13 @@ public class GameEngine {
             }
 
             updateDynamicDifficulty(reactionTimeMs, hasUserInput);
+            updateDynamicReactionLimit();
 
             if (config.difficulty != Difficulty.TRAINING) {
                 int base = Math.max(10, 100 - (int) (reactionTimeMs / 100));
                 score += base + level * 5;
             }
 
-            if (config.difficulty != Difficulty.TRAINING && correctAnswers % 5 == 0) {
-                effectiveReactionMs = Math.max(3000L, effectiveReactionMs - 500L);
-            }
         } else {
             lives--;
             correctStreak = 0;
@@ -141,7 +142,7 @@ public class GameEngine {
     }
 
     private void updateDynamicDifficulty(long reactionTimeMs, boolean hasUserInput) {
-        if (config.difficulty == Difficulty.TRAINING || currentDifficulty == Difficulty.HARD) {
+        if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING || currentDifficulty == Difficulty.HARD) {
             return;
         }
 
@@ -152,6 +153,30 @@ public class GameEngine {
         if (fastReaction || streakPromotion || consistencyPromotion) {
             currentDifficulty = increaseDifficulty(currentDifficulty);
         }
+    }
+
+    private void updateDynamicReactionLimit() {
+        if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING) {
+            effectiveReactionMs = config.reactionLimitMs;
+            return;
+        }
+
+        long configurableRange = Math.max(0L, config.reactionLimitMs - MIN_DYNAMIC_REACTION_MS);
+        if (configurableRange == 0L || targetRoundsForMinimumReaction <= 1) {
+            effectiveReactionMs = MIN_DYNAMIC_REACTION_MS;
+            return;
+        }
+
+        int progressionSteps = targetRoundsForMinimumReaction - 1;
+        int achievedSteps = Math.min(correctAnswers, progressionSteps);
+        long reduction = (configurableRange * achievedSteps) / progressionSteps;
+        effectiveReactionMs = Math.max(MIN_DYNAMIC_REACTION_MS, config.reactionLimitMs - reduction);
+    }
+
+    private int calculateBestCaseRoundsToWin() {
+        int base = config.iterationsPerLevel;
+        int finalLevelIterations = Math.max(2, base - 1);
+        return Math.max(1, base + base + finalLevelIterations);
     }
 
     private Difficulty increaseDifficulty(Difficulty difficulty) {
