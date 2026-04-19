@@ -15,6 +15,12 @@ public class GameUiState {
         GAME_FINISHED
     }
 
+    public enum FeedbackPulse {
+        NONE,
+        SUCCESS,
+        FAILURE
+    }
+
     public final Phase phase;
     public final String statusText;
     public final String ruleText;
@@ -28,8 +34,11 @@ public class GameUiState {
     public final boolean restartVisible;
     public final boolean playSuccessSound;
     public final boolean gameWon;
+    public final FeedbackPulse feedbackPulse;
+    public final int feedbackEventId;
+    public final int preRoundSecondsLeft;
 
-    public GameUiState(Phase phase, String statusText, String ruleText, String stimulusText, int stimulusColor, String countdownText, String statsText, boolean showReactButton, boolean optionsEnabled, List<String> options, boolean restartVisible, boolean playSuccessSound, boolean gameWon){
+    public GameUiState(Phase phase, String statusText, String ruleText, String stimulusText, int stimulusColor, String countdownText, String statsText, boolean showReactButton, boolean optionsEnabled, List<String> options, boolean restartVisible, boolean playSuccessSound, boolean gameWon, FeedbackPulse feedbackPulse, int feedbackEventId, int preRoundSecondsLeft){
         this.phase = phase;
         this.statusText = statusText;
         this.ruleText = ruleText;
@@ -43,6 +52,9 @@ public class GameUiState {
         this.restartVisible = restartVisible;
         this.playSuccessSound = playSuccessSound;
         this.gameWon = gameWon;
+        this.feedbackPulse = feedbackPulse;
+        this.feedbackEventId = feedbackEventId;
+        this.preRoundSecondsLeft = preRoundSecondsLeft;
     }
 
     public static String buildRuleText(StimulusRound.RuleType ruleType, boolean inverseMode) {
@@ -62,5 +74,6 @@ public class GameUiState {
             default:
                 return inverseMode ? "Modo inverso" : "Ronda activa";
         }
+
     }
 }

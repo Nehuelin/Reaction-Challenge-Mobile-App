@@ -2,6 +2,9 @@ package com.example.reactionchallenge;
 
 import android.content.Context;
 import android.content.Intent;
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
+import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.util.TypedValue;
@@ -34,6 +37,7 @@ public class GameActivity extends AppCompatActivity {
     private TextView countdownText;
     private TextView statsText;
     private Button reactButton;
+    private View rootView;
     private LinearLayout answerOptionsContainer;
     private final List<Button> optionButtons = new ArrayList<>();
     private Button restartButton;
@@ -42,6 +46,9 @@ public class GameActivity extends AppCompatActivity {
     private BestScoreRepository bestScoreRepository;
     private float defaultRuleTextSizeSp;
     private boolean finalScoreProcessed;
+    private int baseBackgroundColor;
+    private int lastFeedbackEventId = -1;
+    private int lastPreRoundSecond = -1;
 
     public static Intent createIntent(
             Context context,
@@ -76,6 +83,7 @@ public class GameActivity extends AppCompatActivity {
 
     private void bindViews() {
         statusText = findViewById(R.id.statusText);
+        rootView = findViewById(R.id.gameRoot);
         ruleText = findViewById(R.id.ruleText);
         stimulusText = findViewById(R.id.stimulusText);
         countdownText = findViewById(R.id.countdownText);
@@ -88,6 +96,7 @@ public class GameActivity extends AppCompatActivity {
         optionButtons.add(findViewById(R.id.optionButton3));
         optionButtons.add(findViewById(R.id.optionButton4));
         defaultRuleTextSizeSp = ruleText.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
+        baseBackgroundColor = getColor(R.color.game_background);
     }
 
     private void setupActions() {
@@ -137,8 +146,18 @@ public class GameActivity extends AppCompatActivity {
             if (state.playSuccessSound) {
                 playFeedbackSound();
             }
+            handleFeedbackEffects(state);
+            handlePreRoundCountdownSound(state);
             if (state.phase == GameUiState.Phase.LEVEL_UP) {
                 Toast.makeText(this, "¡Subiste de nivel!", Toast.LENGTH_SHORT).show();
+                playSound(R.raw.sfx_level_up);
+            }
+            if (state.phase == GameUiState.Phase.GAME_FINISHED){
+                if (state.gameWon) {
+                    playSound(R.raw.sfx_player_win);
+                } else {
+                    playSound(R.raw.sfx_player_dead);
+                }
             }
         });
     }
@@ -200,12 +219,53 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void playFeedbackSound() {
-        MediaPlayer player = MediaPlayer.create(this, R.raw.entranceactivate);
+        MediaPlayer player = MediaPlayer.create(this, R.raw.sfx_iteration_good);
         if (player == null) {
             return;
         }
         player.setOnCompletionListener(MediaPlayer::release);
         player.start();
+    }
+
+    private void playSound(int soundResId) {
+        MediaPlayer player = MediaPlayer.create(this, soundResId);
+        if (player == null) {
+            return;
+        }
+        player.setOnCompletionListener(MediaPlayer::release);
+        player.start();
+    }
+    private void handleFeedbackEffects(GameUiState state) {
+        if (state.feedbackEventId == lastFeedbackEventId || state.feedbackPulse == GameUiState.FeedbackPulse.NONE) {
+            return;
+        }
+        lastFeedbackEventId = state.feedbackEventId;
+
+        if (state.feedbackPulse == GameUiState.FeedbackPulse.SUCCESS) {
+            pulseBackground(Color.parseColor("#3EDC81"));
+            playSound(R.raw.sfx_iteration_good);
+        } else if (state.feedbackPulse == GameUiState.FeedbackPulse.FAILURE) {
+            pulseBackground(Color.parseColor("#F05C5C"));
+            playSound(R.raw.sfx_iteration_bad);
+        }
+    }
+
+    private void handlePreRoundCountdownSound(GameUiState state) {
+        if (state.phase != GameUiState.Phase.PRE_ROUND_COUNTDOWN) {
+            lastPreRoundSecond = -1;
+            return;
+        }
+        if (state.preRoundSecondsLeft > 0 && state.preRoundSecondsLeft != lastPreRoundSecond) {
+            lastPreRoundSecond = state.preRoundSecondsLeft;
+            playSound(R.raw.sfx_preround_countdown);
+        }
+    }
+
+    private void pulseBackground(int pulseColor) {
+        ValueAnimator animator = ValueAnimator.ofObject(new ArgbEvaluator(), baseBackgroundColor, pulseColor, baseBackgroundColor);
+        animator.setDuration(350L);
+        animator.addUpdateListener(animation -> rootView.setBackgroundColor((int) animation.getAnimatedValue()));
+        animator.start();
     }
 
 }

@@ -25,6 +25,7 @@ public class GameViewModel extends ViewModel {
     private CountDownTimer roundTimer;
     private long roundStartMs;
     private boolean responseRegistered;
+    private int feedbackEventId;
 
     public LiveData<GameUiState> getUiState() {
         return uiState;
@@ -33,7 +34,7 @@ public class GameViewModel extends ViewModel {
     public void startGame(String playerName, Difficulty difficulty, int iterations, long reactionLimitMs, boolean inverseMode) {
         GameConfig config = new GameConfig(difficulty, iterations, reactionLimitMs, inverseMode);
         gameEngine.start(playerName, config);
-        emitPreRoundState("Partida en curso", "Nueva ronda en: 4 s");
+        emitPreRoundState("Partida en curso", "Nueva ronda en: 4 s", 4);
         startPreRoundCountdown();
     }
 
@@ -80,7 +81,8 @@ public class GameViewModel extends ViewModel {
                 long secondsLeft = (millisUntilFinished + 999L) / 1_000L;
                 emitPreRoundState(
                         buildStatusText(),
-                        String.format(Locale.getDefault(), "Nueva ronda en: %d s", secondsLeft)
+                        String.format(Locale.getDefault(), "Nueva ronda en: %d s", secondsLeft),
+                        (int) secondsLeft
                 );
             }
 
@@ -123,25 +125,31 @@ public class GameViewModel extends ViewModel {
         }
 
         boolean shouldPlaySound = outcome.correct && hasExplicitInput;
+        GameUiState.FeedbackPulse feedbackPulse = outcome.correct
+                ? GameUiState.FeedbackPulse.SUCCESS
+                : GameUiState.FeedbackPulse.FAILURE;
+        int currentEventId = ++feedbackEventId;
         if (outcome.gameOver) {
-            emitFinishedState(outcome.won, shouldPlaySound);
+            emitFinishedState(outcome.won, shouldPlaySound, feedbackPulse, currentEventId);
             return;
         }
 
         if (outcome.levelUp) {
-            emitLevelUpState(shouldPlaySound);
+            emitLevelUpState(shouldPlaySound, feedbackPulse, currentEventId);
             startPreRoundCountdown();
             return;
         }
 
         emitRoundActiveState(
                 String.format(Locale.getDefault(), "Tiempo restante: %.1f s", gameEngine.getEffectiveReactionMs() / 1000f),
-                shouldPlaySound
+                shouldPlaySound,
+                feedbackPulse,
+                currentEventId
         );
         startRoundCountdown();
     }
 
-    private void emitPreRoundState(String status, String countdown) {
+    private void emitPreRoundState(String status, String countdown, int secondsLeft) {
         StimulusRound stimulus = gameEngine.getCurrentStimulus();
         uiState.setValue(new GameUiState(
                 GameUiState.Phase.PRE_ROUND_COUNTDOWN,
@@ -156,11 +164,18 @@ public class GameViewModel extends ViewModel {
                 stimulus.getOptions(),
                 false,
                 false,
-                false
+                false,
+                GameUiState.FeedbackPulse.NONE,
+                feedbackEventId,
+                secondsLeft
         ));
     }
 
     private void emitRoundActiveState(String countdown, boolean playSound) {
+        emitRoundActiveState(countdown, playSound, GameUiState.FeedbackPulse.NONE, feedbackEventId);
+    }
+
+    private void emitRoundActiveState(String countdown, boolean playSound, GameUiState.FeedbackPulse feedbackPulse, int eventId){
         StimulusRound stimulus = gameEngine.getCurrentStimulus();
         uiState.setValue(new GameUiState(
                 GameUiState.Phase.ROUND_ACTIVE,
@@ -175,11 +190,14 @@ public class GameViewModel extends ViewModel {
                 stimulus.getOptions(),
                 false,
                 playSound,
-                false
+                false,
+                feedbackPulse,
+                eventId,
+                -1
         ));
     }
 
-    private void emitLevelUpState(boolean playSound) {
+    private void emitLevelUpState(boolean playSound, GameUiState.FeedbackPulse feedbackPulse, int eventId) {
         StimulusRound stimulus = gameEngine.getCurrentStimulus();
         uiState.setValue(new GameUiState(
                 GameUiState.Phase.LEVEL_UP,
@@ -194,11 +212,14 @@ public class GameViewModel extends ViewModel {
                 stimulus.getOptions(),
                 false,
                 playSound,
-                false
+                false,
+                feedbackPulse,
+                eventId,
+                -1
         ));
     }
 
-    private void emitFinishedState(boolean won, boolean playSound) {
+    private void emitFinishedState(boolean won, boolean playSound, GameUiState.FeedbackPulse feedbackPulse, int eventId) {
         String result = won ? "¡Ganaste todos los niveles!" : "Perdiste. Puedes reiniciar.";
         String finalStats = String.format(
                 Locale.getDefault(),
@@ -224,7 +245,10 @@ public class GameViewModel extends ViewModel {
                 Collections.emptyList(),
                 true,
                 playSound,
-                won
+                won,
+                feedbackPulse,
+                eventId,
+                -1
         ));
     }
 
@@ -307,4 +331,5 @@ public class GameViewModel extends ViewModel {
     protected void onCleared() {
         cancelTimers();
     }
+
 }
