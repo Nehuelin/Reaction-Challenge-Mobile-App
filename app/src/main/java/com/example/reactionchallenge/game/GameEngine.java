@@ -49,6 +49,8 @@ public class GameEngine {
     private Difficulty currentDifficulty;
     private boolean running;
     private int targetRoundsForMinimumReaction;
+    private int firstDifficultyThreshold;
+    private int secondDifficultyThreshold;
 
     public void start(String playerName, GameConfig config) {
         this.playerName = playerName;
@@ -65,6 +67,8 @@ public class GameEngine {
         currentDifficulty = config.difficulty;
         running = true;
         targetRoundsForMinimumReaction = calculateBestCaseRoundsToWin();
+        firstDifficultyThreshold = Math.max(1, (int) Math.ceil(targetRoundsForMinimumReaction * 0.25d));
+        secondDifficultyThreshold = Math.max(firstDifficultyThreshold + 1, (int) Math.ceil(targetRoundsForMinimumReaction * 0.25d));
         successfulReactionTimes.clear();
         currentStimulus = generateStimulus();
     }
@@ -93,8 +97,8 @@ public class GameEngine {
                 successfulReactionTimes.add(reactionTimeMs);
             }
 
-            updateDynamicDifficulty(reactionTimeMs, hasUserInput);
-            updateDynamicReactionLimit();
+            updateDynamicDifficultyForCorrectStreak();
+            updateDynamicReactionLimit(true);
 
             if (config.difficulty != Difficulty.TRAINING) {
                 int base = Math.max(10, 100 - (int) (reactionTimeMs / 100));
@@ -103,7 +107,9 @@ public class GameEngine {
 
         } else {
             lives--;
+            updateDynamicDifficultyForFailure(correctStreak);
             correctStreak = 0;
+            updateDynamicReactionLimit(false);
             if (config.difficulty != Difficulty.TRAINING) {
                 score = Math.max(0, score - 20);
             }
@@ -141,36 +147,66 @@ public class GameEngine {
         return numberFactory.create(currentDifficulty, config.inverseMode, random);
     }
 
-    private void updateDynamicDifficulty(long reactionTimeMs, boolean hasUserInput) {
-        if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING || currentDifficulty == Difficulty.HARD) {
+    private void updateDynamicDifficultyForCorrectStreak() {
+        if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING) {
             return;
         }
 
-        boolean fastReaction = hasUserInput && reactionTimeMs <= (long) (effectiveReactionMs * 0.6f);
-        boolean streakPromotion = correctStreak >= 3 && correctStreak % 3 == 0;
-        boolean consistencyPromotion = correctAnswers % 4 == 0;
+        if (correctStreak >= secondDifficultyThreshold) {
+            currentDifficulty = increaseDifficulty(increaseDifficulty(config.difficulty));
+            return;
+        }
 
-        if (fastReaction || streakPromotion || consistencyPromotion) {
-            currentDifficulty = increaseDifficulty(currentDifficulty);
+        if (correctStreak >= firstDifficultyThreshold) {
+            currentDifficulty = increaseDifficulty(config.difficulty);
         }
     }
 
-    private void updateDynamicReactionLimit() {
+    private void updateDynamicDifficultyForFailure(int streakBeforeFailure) {
+        if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING) {
+            return;
+        }
+
+        Difficulty streakDifficulty = calculateDifficultyForStreak(streakBeforeFailure);
+        if (currentDifficulty.ordinal() > streakDifficulty.ordinal()) {
+            currentDifficulty = decreaseDifficulty(currentDifficulty);
+        }
+    }
+
+    private Difficulty calculateDifficultyForStreak(int streak) {
+        if (streak >= secondDifficultyThreshold) {
+            return increaseDifficulty(increaseDifficulty(config.difficulty));
+        }
+        if (streak >= firstDifficultyThreshold) {
+            return increaseDifficulty(config.difficulty);
+        }
+        return config.difficulty;
+    }
+
+    private void updateDynamicReactionLimit(boolean correct) {
         if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING) {
             effectiveReactionMs = config.reactionLimitMs;
             return;
         }
 
+        long step = calculateReactionAdjustmentStep();
+        if (correct) {
+            effectiveReactionMs = Math.max(MIN_DYNAMIC_REACTION_MS, effectiveReactionMs - step);
+        } else {
+            effectiveReactionMs = Math.min(config.reactionLimitMs, effectiveReactionMs + step);
+        }
+    }
+
+    private long calculateReactionAdjustmentStep() {
+
         long configurableRange = Math.max(0L, config.reactionLimitMs - MIN_DYNAMIC_REACTION_MS);
         if (configurableRange == 0L || targetRoundsForMinimumReaction <= 1) {
             effectiveReactionMs = MIN_DYNAMIC_REACTION_MS;
-            return;
+            return 0L;
         }
 
         int progressionSteps = targetRoundsForMinimumReaction - 1;
-        int achievedSteps = Math.min(correctAnswers, progressionSteps);
-        long reduction = (configurableRange * achievedSteps) / progressionSteps;
-        effectiveReactionMs = Math.max(MIN_DYNAMIC_REACTION_MS, config.reactionLimitMs - reduction);
+        return Math.max(1L, configurableRange / progressionSteps);
     }
 
     private int calculateBestCaseRoundsToWin() {
@@ -185,6 +221,16 @@ public class GameEngine {
         }
         if (difficulty == Difficulty.MEDIUM) {
             return Difficulty.HARD;
+        }
+        return difficulty;
+    }
+
+    private Difficulty decreaseDifficulty(Difficulty difficulty) {
+        if (difficulty == Difficulty.HARD) {
+            return Difficulty.MEDIUM;
+        }
+        if (difficulty == Difficulty.MEDIUM) {
+            return Difficulty.EASY;
         }
         return difficulty;
     }
