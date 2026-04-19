@@ -38,15 +38,15 @@ public class BestScoreRepository {
         float bestAvg = preferences.getFloat(BEST_AVG_PREFIX + playerName, Float.MAX_VALUE);
 
         if (bestScore == 0 && allowPersistedOnly && currentScore == 0) {
-            return "Mejores resultados: aún no registrados.";
+            return "Datos Guardados\n• Jugador: " + playerName + "\n• Aún no hay registros guardados.";
         }
 
-        String avgLabel = bestAvg == Float.MAX_VALUE ? "-" : String.format(Locale.getDefault(), "%.0f ms", bestAvg);
+        String avgLabel = bestAvg == Float.MAX_VALUE ? "Sin dato" : String.format(Locale.getDefault(), "%.0f ms", bestAvg);
         String currentAvgLabel = currentAverage > 0 ? String.format(Locale.getDefault(), "%.0f ms", currentAverage) : "-";
 
         return String.format(
                 Locale.getDefault(),
-                "Mejor puntaje (%s): %d | Mejor promedio: %s | Promedio actual: %s",
+                "Datos persistidos\n• Jugador: %s\n• Mejor puntaje guardado: %d\n• Mejor reacción guardada: %s\n• Reacción promedio actual: %s",
                 playerName,
                 bestScore,
                 avgLabel,

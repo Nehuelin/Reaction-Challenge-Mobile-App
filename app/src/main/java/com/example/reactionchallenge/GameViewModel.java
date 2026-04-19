@@ -157,6 +157,7 @@ public class GameViewModel extends ViewModel {
                 buildRuleText(stimulus),
                 buildRuleText(stimulus),
                 Color.WHITE,
+                "",
                 countdown,
                 buildStatsText(),
                 gameEngine.isInverseMode(),
@@ -183,6 +184,7 @@ public class GameViewModel extends ViewModel {
                 buildRuleText(stimulus),
                 stimulus.getDisplayText(),
                 toAndroidColor(stimulus.getTextColor()),
+                "",
                 countdown,
                 buildStatsText(),
                 gameEngine.isInverseMode(),
@@ -205,6 +207,7 @@ public class GameViewModel extends ViewModel {
                 buildRuleText(stimulus),
                 stimulus.getDisplayText(),
                 toAndroidColor(stimulus.getTextColor()),
+                "",
                 "",
                 buildStatsText(),
                 gameEngine.isInverseMode(),
@@ -238,6 +241,7 @@ public class GameViewModel extends ViewModel {
                 "",
                 "",
                 Color.WHITE,
+                won ? "¡VICTORIA!" : "DERROTA",
                 "",
                 finalStats,
                 gameEngine.isInverseMode(),
@@ -271,7 +275,7 @@ public class GameViewModel extends ViewModel {
                 gameEngine.getCorrectAnswers(),
                 gameEngine.getTotalRounds(),
                 gameEngine.getLevelProgress(),
-                gameEngine.getIterationsPerLevel(),
+                gameEngine.getRequiredIterationsForCurrentLevel(),
                 gameEngine.getConfiguredReactionMs() / 1000f,
                 gameEngine.getEffectiveReactionMs() / 1000f
         );
@@ -309,7 +313,7 @@ public class GameViewModel extends ViewModel {
         if (bestStatsText == null || bestStatsText.isEmpty()) {
             return baseStats;
         }
-        return baseStats + "\n" + bestStatsText;
+        return baseStats + "\n\n" + bestStatsText;
     }
 
     private int toAndroidColor(DomainColor color) {

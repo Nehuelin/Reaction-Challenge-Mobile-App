@@ -34,6 +34,7 @@ public class GameActivity extends AppCompatActivity {
     private TextView statusText;
     private TextView ruleText;
     private TextView stimulusText;
+    private TextView finalResultText;
     private TextView countdownText;
     private TextView statsText;
     private Button reactButton;
@@ -86,6 +87,7 @@ public class GameActivity extends AppCompatActivity {
         rootView = findViewById(R.id.gameRoot);
         ruleText = findViewById(R.id.ruleText);
         stimulusText = findViewById(R.id.stimulusText);
+        finalResultText = findViewById(R.id.finalResultText);
         countdownText = findViewById(R.id.countdownText);
         statsText = findViewById(R.id.statsText);
         reactButton = findViewById(R.id.reactButton);
@@ -122,6 +124,11 @@ public class GameActivity extends AppCompatActivity {
             ruleText.setText(state.ruleText);
             stimulusText.setText(state.stimulusText);
             stimulusText.setTextColor(state.stimulusColor);
+            finalResultText.setText(state.finalResultText);
+            finalResultText.setVisibility(state.finalResultText.isEmpty() ? View.GONE : View.VISIBLE);
+            if (!state.finalResultText.isEmpty()) {
+                finalResultText.setTextColor(state.gameWon ? Color.parseColor("#2E7D32") : Color.parseColor("#C62828"));
+            }
             countdownText.setText(state.countdownText);
             restartButton.setVisibility(state.restartVisible ? View.VISIBLE : View.GONE);
 

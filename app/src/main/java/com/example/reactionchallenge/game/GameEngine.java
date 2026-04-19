@@ -106,7 +106,7 @@ public class GameEngine {
         }
 
         boolean levelUp = false;
-        if (levelProgress >= config.iterationsPerLevel) {
+        if (levelProgress >= getRequiredIterationsForCurrentLevel()) {
             levelUp = true;
             if (level >= MAX_LEVELS) {
                 running = false;
@@ -164,8 +164,21 @@ public class GameEngine {
         return levelProgress;
     }
 
-    public int getIterationsPerLevel() {
-        return config.iterationsPerLevel;
+    public int getRequiredIterationsForCurrentLevel() {
+        int base = config.iterationsPerLevel;
+        if (level < 3) {
+            return base;
+        }
+        switch (config.difficulty) {
+            case TRAINING:
+            case EASY:
+                return Math.max(2, base - 4);
+            case MEDIUM:
+                return Math.max(2, base - 2);
+            case HARD:
+            default:
+                return Math.max(2, base - 1);
+        }
     }
 
     public long getConfiguredReactionMs() {

@@ -1,4 +1,5 @@
 <resources>
+    <string name="app_name">Reaction Challenge</string>
     <string name="game_title">Desafío de Reacción y Atención</string>
     <string name="player_name_hint">Nombre del jugador</string>
     <string name="difficulty_label">Dificultad</string>
@@ -17,4 +18,6 @@
     <string name="react_button">¡Reaccionar!</string>
     <string name="option_react">REACCIONAR</string>
     <string name="option_do_not_react">NO REACCIONAR</string>
+    <string name="result_victory">¡VICTORIA!</string>
+    <string name="result_defeat">DERROTA</string>
 </resources>

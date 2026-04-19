@@ -56,6 +56,17 @@
             tools:text="Color AZUL" />
 
         <TextView
+            android:id="@+id/finalResultText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:textStyle="bold"
+            android:textSize="40sp"
+            android:visibility="gone"
+            tools:text="¡VICTORIA!" />
+
+        <TextView
             android:id="@+id/countdownText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

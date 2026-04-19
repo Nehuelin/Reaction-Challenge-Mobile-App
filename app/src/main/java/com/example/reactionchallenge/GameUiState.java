@@ -26,6 +26,7 @@ public class GameUiState {
     public final String ruleText;
     public final String stimulusText;
     public final int stimulusColor;
+    public final String finalResultText;
     public final String countdownText;
     public final String statsText;
     public final boolean showReactButton;
@@ -38,12 +39,13 @@ public class GameUiState {
     public final int feedbackEventId;
     public final int preRoundSecondsLeft;
 
-    public GameUiState(Phase phase, String statusText, String ruleText, String stimulusText, int stimulusColor, String countdownText, String statsText, boolean showReactButton, boolean optionsEnabled, List<String> options, boolean restartVisible, boolean playSuccessSound, boolean gameWon, FeedbackPulse feedbackPulse, int feedbackEventId, int preRoundSecondsLeft){
+    public GameUiState(Phase phase, String statusText, String ruleText, String stimulusText, int stimulusColor, String finalResultText, String countdownText, String statsText, boolean showReactButton, boolean optionsEnabled, List<String> options, boolean restartVisible, boolean playSuccessSound, boolean gameWon, FeedbackPulse feedbackPulse, int feedbackEventId, int preRoundSecondsLeft){
         this.phase = phase;
         this.statusText = statusText;
         this.ruleText = ruleText;
         this.stimulusText = stimulusText;
         this.stimulusColor = stimulusColor;
+        this.finalResultText = finalResultText;
         this.countdownText = countdownText;
         this.statsText = statsText;
         this.showReactButton = showReactButton;
