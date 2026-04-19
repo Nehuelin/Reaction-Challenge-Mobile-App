@@ -269,8 +269,10 @@ public class GameViewModel extends ViewModel {
     private String buildStatsText() {
         return String.format(
                 Locale.getDefault(),
-                "Jugador: %s\nPuntaje: %d\nAciertos: %d/%d\nProgreso nivel: %d/%d\nTiempo configurado: %.1f s | Tiempo dinámico: %.1f s",
+                "Jugador: %s\nDificultad base: %s | Dificultad actual: %s\nPuntaje: %d\nAciertos: %d/%d\nProgreso nivel: %d/%d\nTiempo configurado: %.1f s | Tiempo dinámico: %.1f s",
                 gameEngine.getPlayerName(),
+                gameEngine.getDifficulty().name(),
+                gameEngine.getCurrentDifficulty().name(),
                 gameEngine.getScore(),
                 gameEngine.getCorrectAnswers(),
                 gameEngine.getTotalRounds(),
@@ -283,9 +285,9 @@ public class GameViewModel extends ViewModel {
 
     private String buildRuleText(StimulusRound stimulusRound) {
         if (stimulusRound.getRuleType() == StimulusRound.RuleType.INVERSE_COLOR_TARGET) {
-            String targets = gameEngine.getDifficulty() == Difficulty.HARD
+            String targets = gameEngine.getCurrentDifficulty() == Difficulty.HARD
                     ? "ROJO, AZUL, MORADO, CIAN"
-                    : gameEngine.getDifficulty() == Difficulty.MEDIUM
+                    : gameEngine.getCurrentDifficulty() == Difficulty.MEDIUM
                     ? "ROJO, AZUL"
                     : "ROJO";
             return "Modo inverso: reacciona SOLO ante " + targets;

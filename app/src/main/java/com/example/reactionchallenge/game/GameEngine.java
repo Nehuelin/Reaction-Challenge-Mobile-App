@@ -44,6 +44,8 @@ public class GameEngine {
     private int totalRounds;
     private int levelProgress;
     private long effectiveReactionMs;
+    private int correctStreak;
+    private Difficulty currentDifficulty;
     private boolean running;
 
     public void start(String playerName, GameConfig config) {
@@ -57,6 +59,8 @@ public class GameEngine {
         totalRounds = 0;
         levelProgress = 0;
         effectiveReactionMs = config.reactionLimitMs;
+        correctStreak = 0;
+        currentDifficulty = config.difficulty;
         running = true;
         successfulReactionTimes.clear();
         currentStimulus = generateStimulus();
@@ -81,9 +85,12 @@ public class GameEngine {
         if (correct) {
             correctAnswers++;
             levelProgress++;
+            correctStreak++;
             if (hasUserInput) {
                 successfulReactionTimes.add(reactionTimeMs);
             }
+
+            updateDynamicDifficulty(reactionTimeMs, hasUserInput);
 
             if (config.difficulty != Difficulty.TRAINING) {
                 int base = Math.max(10, 100 - (int) (reactionTimeMs / 100));
@@ -95,6 +102,7 @@ public class GameEngine {
             }
         } else {
             lives--;
+            correctStreak = 0;
             if (config.difficulty != Difficulty.TRAINING) {
                 score = Math.max(0, score - 20);
             }
@@ -122,14 +130,38 @@ public class GameEngine {
 
     private StimulusRound generateStimulus() {
         if (level == 1) {
-            return colorFactory.create(config.difficulty, config.inverseMode, random);
+            return colorFactory.create(currentDifficulty, config.inverseMode, random);
         }
 
         if (level == 2) {
-            return wordFactory.create(config.difficulty, config.inverseMode, random);
+            return wordFactory.create(currentDifficulty, config.inverseMode, random);
         }
 
-        return numberFactory.create(config.difficulty, config.inverseMode, random);
+        return numberFactory.create(currentDifficulty, config.inverseMode, random);
+    }
+
+    private void updateDynamicDifficulty(long reactionTimeMs, boolean hasUserInput) {
+        if (config.difficulty == Difficulty.TRAINING || currentDifficulty == Difficulty.HARD) {
+            return;
+        }
+
+        boolean fastReaction = hasUserInput && reactionTimeMs <= (long) (effectiveReactionMs * 0.6f);
+        boolean streakPromotion = correctStreak >= 3 && correctStreak % 3 == 0;
+        boolean consistencyPromotion = correctAnswers % 4 == 0;
+
+        if (fastReaction || streakPromotion || consistencyPromotion) {
+            currentDifficulty = increaseDifficulty(currentDifficulty);
+        }
+    }
+
+    private Difficulty increaseDifficulty(Difficulty difficulty) {
+        if (difficulty == Difficulty.EASY) {
+            return Difficulty.MEDIUM;
+        }
+        if (difficulty == Difficulty.MEDIUM) {
+            return Difficulty.HARD;
+        }
+        return difficulty;
     }
 
     public boolean isRunning() {
@@ -169,7 +201,7 @@ public class GameEngine {
         if (level < 3) {
             return base;
         }
-        switch (config.difficulty) {
+        switch (currentDifficulty) {
             case TRAINING:
             case EASY:
                 return Math.max(2, base - 4);
@@ -191,6 +223,10 @@ public class GameEngine {
 
     public Difficulty getDifficulty() {
         return config.difficulty;
+    }
+
+    public Difficulty getCurrentDifficulty(){
+        return currentDifficulty;
     }
 
     public boolean isInverseMode() {
