@@ -284,13 +284,8 @@ public class GameViewModel extends ViewModel {
     }
 
     private String buildRuleText(StimulusRound stimulusRound) {
-        if (stimulusRound.getRuleType() == StimulusRound.RuleType.INVERSE_COLOR_TARGET) {
-            String targets = gameEngine.getCurrentDifficulty() == Difficulty.HARD
-                    ? "ROJO, AZUL, MORADO, CIAN"
-                    : gameEngine.getCurrentDifficulty() == Difficulty.MEDIUM
-                    ? "ROJO, AZUL"
-                    : "ROJO";
-            return "Modo inverso: reacciona SOLO ante " + targets;
+        if (stimulusRound.getInverseRuleText() != null && !stimulusRound.getInverseRuleText().isEmpty()) {
+            return stimulusRound.getInverseRuleText();
         }
         return GameUiState.buildRuleText(stimulusRound.getRuleType(), gameEngine.isInverseMode());
     }

@@ -31,8 +31,13 @@ public class StimulusRound {
     private final boolean shouldReact;
     private final List<String> options;
     private final String correctOption;
+    private final String inverseRuleText;
 
     public StimulusRound(Category category, InputMode inputMode, RuleType ruleType, String displayText, DomainColor textColor, boolean shouldReact, List<String> options, String correctOption){
+        this(category, inputMode, ruleType, displayText, textColor, shouldReact, options, correctOption, null);
+    }
+
+    public StimulusRound(Category category, InputMode inputMode, RuleType ruleType, String displayText, DomainColor textColor, boolean shouldReact, List<String> options, String correctOption, String inverseRuleText){
         this.category = category;
         this.inputMode = inputMode;
         this.ruleType = ruleType;
@@ -41,6 +46,7 @@ public class StimulusRound {
         this.shouldReact = shouldReact;
         this.options = options == null ? Collections.emptyList() : Collections.unmodifiableList(options);
         this.correctOption = correctOption;
+        this.inverseRuleText = inverseRuleText;
     }
 
     public Category getCategory() {
@@ -73,5 +79,9 @@ public class StimulusRound {
 
     public String getCorrectOption() {
         return correctOption;
+    }
+
+    public String getInverseRuleText() {
+        return inverseRuleText;
     }
 }

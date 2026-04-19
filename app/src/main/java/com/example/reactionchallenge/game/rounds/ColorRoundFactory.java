@@ -29,25 +29,9 @@ public class ColorRoundFactory implements RoundFactory {
         List<ColorStimulus> palette = buildColorPalette(difficulty);
         ColorStimulus selected = palette.get(random.nextInt(palette.size()));
 
-        String[] targetColors = difficulty == Difficulty.HARD
-                ? new String[]{"ROJO", "AZUL", "MORADO", "CIAN"}
-                : difficulty == Difficulty.MEDIUM
-                ? new String[]{"ROJO", "AZUL"}
-                : new String[]{"ROJO"};
-
-        boolean isTargetColor = contains(selected.label, targetColors);
-
         if (inverseMode) {
-            return new StimulusRound(
-                    StimulusRound.Category.COLOR,
-                    StimulusRound.InputMode.REACTION,
-                    StimulusRound.RuleType.INVERSE_COLOR_TARGET,
-                    "Color " + selected.label,
-                    selected.color,
-                    isTargetColor,
-                    Collections.emptyList(),
-                    null
-            );
+            List<String> targetColors = pickInverseTargetColors(difficulty, random);
+            return createInverseRound(selected, targetColors);
         }
 
         List<String> options;
@@ -60,6 +44,29 @@ public class ColorRoundFactory implements RoundFactory {
 
         return new StimulusRound(StimulusRound.Category.COLOR, StimulusRound.InputMode.CHOICE, StimulusRound.RuleType.COLOR_SELECTION, "COLOR", selected.color, true, options, selected.label);
     }
+
+    public StimulusRound createInverseWithTargets(Difficulty difficulty, Random random, List<String> targetColors) {
+        List<ColorStimulus> palette = buildColorPalette(difficulty);
+        ColorStimulus selected = palette.get(random.nextInt(palette.size()));
+        return createInverseRound(selected, targetColors);
+    }
+
+    public List<String> pickInverseTargetColors(Difficulty difficulty, Random random) {
+        List<String> availableTargets = extractColorNames(buildColorPalette(difficulty));
+        Collections.shuffle(availableTargets, random);
+
+        int targetCount;
+        if (difficulty == Difficulty.HARD) {
+            targetCount = 3;
+        } else if (difficulty == Difficulty.MEDIUM) {
+            targetCount = 2;
+        } else {
+            targetCount = 1;
+        }
+
+        return new ArrayList<>(availableTargets.subList(0, Math.min(targetCount, availableTargets.size())));
+    }
+
 
     private List<ColorStimulus> buildColorPalette(Difficulty difficulty) {
         List<ColorStimulus> palette = new ArrayList<>();
@@ -124,12 +131,36 @@ public class ColorRoundFactory implements RoundFactory {
         return result;
     }
 
-    private boolean contains(String value, String[] candidates) {
-        for (String candidate : candidates) {
-            if (candidate.equals(value)) {
-                return true;
-            }
+    private StimulusRound createInverseRound(ColorStimulus selected, List<String> targetColors) {
+        boolean isTargetColor = targetColors.contains(selected.label);
+        return new StimulusRound(
+                StimulusRound.Category.COLOR,
+                StimulusRound.InputMode.REACTION,
+                StimulusRound.RuleType.INVERSE_COLOR_TARGET,
+                "Color " + selected.label,
+                selected.color,
+                isTargetColor,
+                Collections.emptyList(),
+                null,
+                "Modo inverso: reacciona SOLO ante los colores " + joinTargets(targetColors)
+        );
+    }
+
+    private String joinTargets(List<String> targetColors) {
+        if (targetColors.size() == 1) {
+            return targetColors.get(0);
         }
-        return false;
+        if (targetColors.size() == 2) {
+            return targetColors.get(0) + " o " + targetColors.get(1);
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < targetColors.size(); i++) {
+            if (i > 0) {
+                builder.append(i == targetColors.size() - 1 ? " o " : ", ");
+            }
+            builder.append(targetColors.get(i));
+        }
+        return builder.toString();
     }
 }

@@ -30,18 +30,9 @@ public class WordRoundFactory implements RoundFactory {
         List<WordStimulus> words = buildWordPool(difficulty);
         WordStimulus selected = words.get(random.nextInt(words.size()));
 
-        boolean shouldReact = "MUY LARGA (8-9) (6-7)".equals(selected.bucket);
         if (inverseMode) {
-            return new StimulusRound(
-                    StimulusRound.Category.WORD,
-                    StimulusRound.InputMode.REACTION,
-                    StimulusRound.RuleType.INVERSE_WORD_TARGET,
-                    selected.word,
-                    WORD_COLOR,
-                    shouldReact,
-                    Collections.emptyList(),
-                    null
-            );
+            String targetBucket = pickInverseTargetBucket(random);
+            return createInverseRound(selected, targetBucket);
         }
 
         List<String> options = new ArrayList<>(FIXED_WORD_OPTIONS);
@@ -59,6 +50,16 @@ public class WordRoundFactory implements RoundFactory {
                 options,
                 selected.bucket
         );
+    }
+
+    public String pickInverseTargetBucket(Random random) {
+        return FIXED_WORD_OPTIONS.get(random.nextInt(FIXED_WORD_OPTIONS.size()));
+    }
+
+    public StimulusRound createInverseWithTarget(Difficulty difficulty, Random random, String targetBucket) {
+        List<WordStimulus> words = buildWordPool(difficulty);
+        WordStimulus selected = words.get(random.nextInt(words.size()));
+        return createInverseRound(selected, targetBucket);
     }
 
     private List<WordStimulus> buildWordPool(Difficulty difficulty) {
@@ -104,5 +105,20 @@ public class WordRoundFactory implements RoundFactory {
         }
 
         return words;
+    }
+
+    private StimulusRound createInverseRound(WordStimulus selected, String targetBucket) {
+        boolean shouldReact = targetBucket.equals(selected.bucket);
+        return new StimulusRound(
+                StimulusRound.Category.WORD,
+                StimulusRound.InputMode.REACTION,
+                StimulusRound.RuleType.INVERSE_WORD_TARGET,
+                selected.word,
+                WORD_COLOR,
+                shouldReact,
+                Collections.emptyList(),
+                null,
+                "Modo inverso: reacciona SOLO ante palabras de longitud " + targetBucket
+        );
     }
 }

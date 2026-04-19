@@ -30,9 +30,9 @@ public class GameEngine {
 
     private final Random random = new Random();
     private final List<Long> successfulReactionTimes = new ArrayList<>();
-    private final RoundFactory colorFactory = new ColorRoundFactory();
-    private final RoundFactory wordFactory = new WordRoundFactory();
-    private final RoundFactory numberFactory = new NumberRoundFactory();
+    private final ColorRoundFactory colorFactory = new ColorRoundFactory();
+    private final WordRoundFactory wordFactory = new WordRoundFactory();
+    private final NumberRoundFactory numberFactory = new NumberRoundFactory();
 
     private GameConfig config;
     private String playerName;
@@ -51,6 +51,9 @@ public class GameEngine {
     private int targetRoundsForMinimumReaction;
     private int firstDifficultyThreshold;
     private int secondDifficultyThreshold;
+    private List<String> inverseColorTargetsForLevel;
+    private String inverseWordTargetForLevel;
+    private String inverseNumberTargetForLevel;
 
     public void start(String playerName, GameConfig config) {
         this.playerName = playerName;
@@ -71,6 +74,9 @@ public class GameEngine {
         secondDifficultyThreshold = Math.max(firstDifficultyThreshold + 1, (int) Math.ceil(targetRoundsForMinimumReaction * 0.25d));
         successfulReactionTimes.clear();
         currentStimulus = generateStimulus();
+        inverseColorTargetsForLevel = null;
+        inverseWordTargetForLevel = null;
+        inverseNumberTargetForLevel = null;
     }
 
     public RoundOutcome resolveRoundInput(boolean correct, long reactionTimeMs, boolean hasUserInput) {
@@ -129,6 +135,7 @@ public class GameEngine {
             }
             level++;
             levelProgress = 0;
+            initializeInverseRuleForCurrentLevel();
         }
 
         currentStimulus = generateStimulus();
@@ -137,15 +144,42 @@ public class GameEngine {
 
     private StimulusRound generateStimulus() {
         if (level == 1) {
+            if (config.inverseMode) {
+                initializeInverseRuleForCurrentLevel();
+                return colorFactory.createInverseWithTargets(currentDifficulty, random, inverseColorTargetsForLevel);
+            }
             return colorFactory.create(currentDifficulty, config.inverseMode, random);
         }
 
         if (level == 2) {
+            if (config.inverseMode) {
+                initializeInverseRuleForCurrentLevel();
+                return wordFactory.createInverseWithTarget(currentDifficulty, random, inverseWordTargetForLevel);
+            }
             return wordFactory.create(currentDifficulty, config.inverseMode, random);
         }
 
+        if (config.inverseMode) {
+            initializeInverseRuleForCurrentLevel();
+            return numberFactory.createInverseWithTarget(currentDifficulty, random, inverseNumberTargetForLevel);
+        }
         return numberFactory.create(currentDifficulty, config.inverseMode, random);
     }
+
+    private void initializeInverseRuleForCurrentLevel() {
+        if (!config.inverseMode) {
+            return;
+        }
+
+        if (level == 1 && inverseColorTargetsForLevel == null) {
+            inverseColorTargetsForLevel = colorFactory.pickInverseTargetColors(currentDifficulty, random);
+        } else if (level == 2 && inverseWordTargetForLevel == null) {
+            inverseWordTargetForLevel = wordFactory.pickInverseTargetBucket(random);
+        } else if (level == 3 && inverseNumberTargetForLevel == null) {
+            inverseNumberTargetForLevel = numberFactory.pickInverseTargetType(random);
+        }
+    }
+
 
     private void updateDynamicDifficultyForCorrectStreak() {
         if (!config.dynamicDifficultyEnabled || config.difficulty == Difficulty.TRAINING) {

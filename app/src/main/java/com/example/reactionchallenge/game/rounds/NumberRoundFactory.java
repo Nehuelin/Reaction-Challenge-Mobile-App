@@ -23,16 +23,8 @@ public class NumberRoundFactory implements RoundFactory {
         boolean prime = isPrime(value);
 
         if (inverseMode) {
-            return new StimulusRound(
-                    StimulusRound.Category.NUMBER,
-                    StimulusRound.InputMode.REACTION,
-                    StimulusRound.RuleType.INVERSE_PRIME_RULE,
-                    String.valueOf(value),
-                    NUMBER_COLOR,
-                    !prime,
-                    Collections.emptyList(),
-                    null
-            );
+            String targetType = pickInverseTargetType(random);
+            return createInverseRound(value, prime, targetType);
         }
 
         String correct = classify(value, prime);
@@ -48,6 +40,16 @@ public class NumberRoundFactory implements RoundFactory {
                 options,
                 correct
         );
+    }
+
+    public String pickInverseTargetType(Random random) {
+        return ALL_NUMBER_OPTIONS.get(random.nextInt(ALL_NUMBER_OPTIONS.size()));
+    }
+
+    public StimulusRound createInverseWithTarget(Difficulty difficulty, Random random, String targetType) {
+        int value = generateValue(difficulty, random);
+        boolean prime = isPrime(value);
+        return createInverseRound(value, prime, targetType);
     }
 
     private int generateValue(Difficulty difficulty, Random random) {
@@ -157,5 +159,34 @@ public class NumberRoundFactory implements RoundFactory {
             }
         }
         return true;
+    }
+
+    private boolean matchesInverseTarget(int value, boolean prime, String targetType) {
+        switch (targetType) {
+            case "PRIMO":
+                return prime;
+            case "COMPUESTO":
+                return !prime;
+            case "PAR":
+                return value % 2 == 0;
+            case "IMPAR":
+                return value % 2 != 0;
+            default:
+                return false;
+        }
+    }
+
+    private StimulusRound createInverseRound(int value, boolean prime, String targetType) {
+        return new StimulusRound(
+                StimulusRound.Category.NUMBER,
+                StimulusRound.InputMode.REACTION,
+                StimulusRound.RuleType.INVERSE_PRIME_RULE,
+                String.valueOf(value),
+                NUMBER_COLOR,
+                matchesInverseTarget(value, prime, targetType),
+                Collections.emptyList(),
+                null,
+                "Modo inverso: reacciona SOLO ante números " + targetType
+        );
     }
 }
