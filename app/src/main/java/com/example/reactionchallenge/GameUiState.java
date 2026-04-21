@@ -69,8 +69,8 @@ public class GameUiState {
                 return "Modo inverso: reacciona SOLO ante palabras MUY LARGAS";
             case WORD_LENGTH_SELECTION:
                 return "Selecciona la categoría de longitud de la palabra";
-            case INVERSE_PRIME_RULE:
-                return "Modo inverso: NO reacciones ante números primos";
+            case INVERSE_NUMBER_TARGET:
+                return "Modo inverso: reacciona SOLO ante la categoría objetivo";
             case NUMBER_CLASSIFICATION:
                 return "Selecciona la mejor clasificación para el número";
             default:

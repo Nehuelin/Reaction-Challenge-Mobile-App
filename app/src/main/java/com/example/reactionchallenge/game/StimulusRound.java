@@ -19,7 +19,7 @@ public class StimulusRound {
         COLOR_SELECTION,
         INVERSE_WORD_TARGET,
         WORD_LENGTH_SELECTION,
-        INVERSE_PRIME_RULE,
+        INVERSE_NUMBER_TARGET,
         NUMBER_CLASSIFICATION
     }
 

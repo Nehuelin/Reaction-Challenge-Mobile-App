@@ -71,7 +71,7 @@ public class GameEngine {
         running = true;
         targetRoundsForMinimumReaction = calculateBestCaseRoundsToWin();
         firstDifficultyThreshold = Math.max(1, (int) Math.ceil(targetRoundsForMinimumReaction * 0.25d));
-        secondDifficultyThreshold = Math.max(firstDifficultyThreshold + 1, (int) Math.ceil(targetRoundsForMinimumReaction * 0.25d));
+        secondDifficultyThreshold = Math.max(firstDifficultyThreshold + 1, (int) Math.ceil(targetRoundsForMinimumReaction * 0.65d));
         successfulReactionTimes.clear();
         currentStimulus = generateStimulus();
         inverseColorTargetsForLevel = null;

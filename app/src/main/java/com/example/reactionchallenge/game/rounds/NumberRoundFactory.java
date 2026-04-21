@@ -11,23 +11,32 @@ import java.util.List;
 import java.util.Random;
 
 public class NumberRoundFactory implements RoundFactory {
+    private static final String CATEGORY_LESS_THAN_50 = "MENOR A 50";
+    private static final String CATEGORY_50_TO_99 = "ENTRE 50 Y 99";
+    private static final String CATEGORY_100_OR_MORE = "100 O MÁS";
+    private static final String CATEGORY_REPEATED_DIGITS = "REPITE DÍGITOS";
 
     private static final List<String> ALL_NUMBER_OPTIONS =
-            Arrays.asList("PRIMO", "COMPUESTO", "PAR", "IMPAR");
+            Arrays.asList(
+                    CATEGORY_LESS_THAN_50,
+                    CATEGORY_50_TO_99,
+                    CATEGORY_100_OR_MORE,
+                    CATEGORY_REPEATED_DIGITS
+            );
 
+    private static final List<Integer> HARD_TRAP_VALUES = Arrays.asList(49, 50, 99, 100, 101, 111, 121, 222);
     private static final DomainColor NUMBER_COLOR = new DomainColor(80, 50, 130);
 
     @Override
     public StimulusRound create(Difficulty difficulty, boolean inverseMode, Random random) {
         int value = generateValue(difficulty, random);
-        boolean prime = isPrime(value);
 
         if (inverseMode) {
             String targetType = pickInverseTargetType(random);
-            return createInverseRound(value, prime, targetType);
+            return createInverseRound(value, targetType);
         }
 
-        String correct = classify(value, prime);
+        String correct = classify(value);
         List<String> options = buildOptions(difficulty, correct, random);
 
         return new StimulusRound(
@@ -48,41 +57,49 @@ public class NumberRoundFactory implements RoundFactory {
 
     public StimulusRound createInverseWithTarget(Difficulty difficulty, Random random, String targetType) {
         int value = generateValue(difficulty, random);
-        boolean prime = isPrime(value);
-        return createInverseRound(value, prime, targetType);
+        return createInverseRound(value, targetType);
     }
 
     private int generateValue(Difficulty difficulty, Random random) {
-        int lower;
-        int range;
-
         switch (difficulty) {
             case EASY:
-                lower = 2;
-                range = 28;   // 2..29
-                break;
+                return 10 + random.nextInt(111); // 10..120
             case MEDIUM:
-                lower = 10;
-                range = 60;   // 10..69
-                break;
+                return 10 + random.nextInt(190); // 10..199
             case HARD:
             default:
-                lower = 40;
-                range = 110;  // 40..149
-                break;
+                if (random.nextInt(100) < 35) {
+                    return HARD_TRAP_VALUES.get(random.nextInt(HARD_TRAP_VALUES.size()));
+                }
+                return 10 + random.nextInt(390); // 10..399
         }
-
-        return lower + random.nextInt(range);
     }
 
-    private String classify(int value, boolean prime) {
-        if (prime) {
-            return "PRIMO";
+    public String classify(int value) {
+        if (hasRepeatedDigits(value)) {
+            return CATEGORY_REPEATED_DIGITS;
         }
-        if (value % 2 == 0) {
-            return "PAR";
+        if (value < 50) {
+            return CATEGORY_LESS_THAN_50;
         }
-        return "COMPUESTO";
+        if (value <= 99) {
+            return CATEGORY_50_TO_99;
+        }
+        return CATEGORY_100_OR_MORE;
+    }
+
+    public boolean hasRepeatedDigits(int value) {
+        String digits = String.valueOf(Math.abs(value));
+        boolean[] seen = new boolean[10];
+
+        for (int i = 0; i < digits.length(); i++) {
+            int digit = digits.charAt(i) - '0';
+            if (seen[digit]) {
+                return true;
+            }
+            seen[digit] = true;
+        }
+        return false;
     }
 
     private List<String> buildOptions(Difficulty difficulty, String correct, Random random) {
@@ -93,12 +110,10 @@ public class NumberRoundFactory implements RoundFactory {
             case EASY:
                 options.add(getEasyDistractor(correct));
                 break;
-
             case MEDIUM:
                 options.addAll(getMediumDistractors(correct, random));
                 Collections.shuffle(options, random);
                 break;
-
             case HARD:
             default:
                 for (String option : ALL_NUMBER_OPTIONS) {
@@ -114,76 +129,37 @@ public class NumberRoundFactory implements RoundFactory {
     }
 
     private String getEasyDistractor(String correct) {
-        switch (correct) {
-            case "PRIMO":
-                return "COMPUESTO";
-            case "PAR":
-                return "COMPUESTO";
-            case "COMPUESTO":
-            default:
-                return "PAR";
+        if (CATEGORY_REPEATED_DIGITS.equals(correct)) {
+            return CATEGORY_100_OR_MORE;
         }
+        if (CATEGORY_LESS_THAN_50.equals(correct)) {
+            return CATEGORY_50_TO_99;
+        }
+        if (CATEGORY_50_TO_99.equals(correct)) {
+            return CATEGORY_LESS_THAN_50;
+        }
+        return CATEGORY_50_TO_99;
     }
 
     private List<String> getMediumDistractors(String correct, Random random) {
-        List<String> distractors = new ArrayList<>();
-
-        switch (correct) {
-            case "PRIMO":
-                distractors.add("COMPUESTO");
-                distractors.add(random.nextBoolean() ? "PAR" : "IMPAR");
-                break;
-
-            case "PAR":
-                distractors.add("COMPUESTO");
-                distractors.add("IMPAR");
-                break;
-
-            case "COMPUESTO":
-            default:
-                distractors.add("PRIMO");
-                distractors.add("PAR");
-                break;
-        }
-
-        return distractors;
+        List<String> distractorPool = new ArrayList<>(ALL_NUMBER_OPTIONS);
+        distractorPool.remove(correct);
+        Collections.shuffle(distractorPool, random);
+        return new ArrayList<>(distractorPool.subList(0, 2));
     }
 
-    private boolean isPrime(int number) {
-        if (number < 2) {
-            return false;
-        }
-        for (int i = 2; i * i <= number; i++) {
-            if (number % i == 0) {
-                return false;
-            }
-        }
-        return true;
+    private boolean matchesInverseTarget(int value, String targetType) {
+        return classify(value).equals(targetType);
     }
 
-    private boolean matchesInverseTarget(int value, boolean prime, String targetType) {
-        switch (targetType) {
-            case "PRIMO":
-                return prime;
-            case "COMPUESTO":
-                return !prime;
-            case "PAR":
-                return value % 2 == 0;
-            case "IMPAR":
-                return value % 2 != 0;
-            default:
-                return false;
-        }
-    }
-
-    private StimulusRound createInverseRound(int value, boolean prime, String targetType) {
+    private StimulusRound createInverseRound(int value, String targetType) {
         return new StimulusRound(
                 StimulusRound.Category.NUMBER,
                 StimulusRound.InputMode.REACTION,
-                StimulusRound.RuleType.INVERSE_PRIME_RULE,
+                StimulusRound.RuleType.INVERSE_NUMBER_TARGET,
                 String.valueOf(value),
                 NUMBER_COLOR,
-                matchesInverseTarget(value, prime, targetType),
+                matchesInverseTarget(value, targetType),
                 Collections.emptyList(),
                 null,
                 "Modo inverso: reacciona SOLO ante números " + targetType
